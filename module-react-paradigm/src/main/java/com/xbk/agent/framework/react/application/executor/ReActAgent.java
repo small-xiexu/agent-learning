@@ -21,7 +21,7 @@ import java.util.UUID;
 /**
  * 纯手写 ReAct Agent
  *
- * 职责：基于统一 LLM 门面和工具注册中心执行 Thought -> Action -> Observation 闭环
+ * 职责：自己手动把“先想一下 -> 再调工具 -> 再看结果 -> 继续想”这一套流程跑起来
  *
  * @author xiexu
  */
@@ -89,12 +89,12 @@ public class ReActAgent {
 
         int step = 0;
         /*
-         * 这里必须使用 while (step < maxSteps) 作为安全阀。
-         * 每一轮循环都代表一次完整的“思考 -> 行动 -> 观察”尝试：
-         * 1. 先把当前 history 发给 LLM。
-         * 2. 如果 LLM 返回工具调用，就执行工具并把 Observation 追加回 history。
-         * 3. 如果 LLM 返回最终答案，就结束循环。
-         * 4. 如果模型一直要求继续行动，step 会不断增长，直到达到 maxSteps 强制停止。
+         * 这里必须用 while (step < maxSteps) 当安全阀。
+         * 可以把每一轮理解成一次“先问模型现在该干嘛，再按模型说的继续做”的尝试：
+         * 1. 先把目前为止的对话 history 发给模型。
+         * 2. 如果模型说“去调工具”，那就真的去调工具，再把工具结果记回 history。
+         * 3. 如果模型直接给出了最终答案，那这一轮就结束。
+         * 4. 如果模型一直不肯收敛、每轮都还要继续行动，就靠 maxSteps 强行停下来，避免死循环。
          */
         while (step < maxSteps) {
             step++;
@@ -145,7 +145,7 @@ public class ReActAgent {
     }
 
     /**
-     * 追加助手消息
+     * 把本轮模型回复记到上下文里
      *
      * @param history 历史消息
      * @param memorySession 会话内存
@@ -163,13 +163,14 @@ public class ReActAgent {
             if (content == null || content.trim().isEmpty()) {
                 return;
             }
+            // 如果底层没给标准消息对象，就把返回文本手动包成一条“模型回复消息”。
             assistantMessage = createMessage(conversationId, MessageRole.ASSISTANT, content);
         }
         appendMessage(history, memorySession, assistantMessage);
     }
 
     /**
-     * 执行单次工具调用
+     * 真正执行一次工具调用
      *
      * @param conversationId 会话标识
      * @param memorySession 会话内存
@@ -197,7 +198,7 @@ public class ReActAgent {
     }
 
     /**
-     * 创建普通消息
+     * 创建一条普通消息
      *
      * @param conversationId 会话标识
      * @param role 消息角色
@@ -214,12 +215,12 @@ public class ReActAgent {
     }
 
     /**
-     * 创建 Observation 消息
+     * 把工具结果包成一条“工具返回消息”
      *
      * @param conversationId 会话标识
      * @param toolCall 工具调用
      * @param toolResult 工具结果
-     * @return Observation 消息
+     * @return 工具返回消息
      */
     private Message createObservationMessage(String conversationId, ToolCall toolCall, ToolResult toolResult) {
         String observation = toolResult.isSuccess()
@@ -236,7 +237,7 @@ public class ReActAgent {
     }
 
     /**
-     * 读取响应文本
+     * 尽量把模型返回的文本取出来
      *
      * @param response LLM 响应
      * @return 文本内容
@@ -249,7 +250,7 @@ public class ReActAgent {
     }
 
     /**
-     * 解析最终答案
+     * 从模型回复里提取最终答案
      *
      * @param response LLM 响应
      * @return 最终答案
@@ -267,7 +268,7 @@ public class ReActAgent {
     }
 
     /**
-     * 追加消息到历史和会话内存
+     * 同时写入 history 和 memory
      *
      * @param history 历史消息
      * @param memorySession 会话内存
