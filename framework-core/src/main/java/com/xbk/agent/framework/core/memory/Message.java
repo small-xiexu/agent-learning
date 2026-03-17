@@ -10,7 +10,7 @@ import java.util.Objects;
 
 /**
  * 统一消息模型
- *
+ * <p>
  * 职责：封装对话、工具与系统消息的基础协议
  *
  * @author xiexu
@@ -136,7 +136,7 @@ public final class Message {
 
     /**
      * 消息构建器
-     *
+     * <p>
      * 职责：组装不可变消息对象
      *
      * @author xiexu
