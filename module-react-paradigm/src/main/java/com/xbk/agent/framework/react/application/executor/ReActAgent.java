@@ -102,7 +102,7 @@ public class ReActAgent {
             appendAssistantMessage(history, memorySession, conversationId, response);
 
             if (!response.getToolCalls().isEmpty()) {
-                ToolCall toolCall = response.getToolCalls().get(0);
+                ToolCall toolCall = response.getToolCalls().getFirst();
                 ToolResult toolResult = executeTool(conversationId, memorySession, step, toolCall);
                 appendMessage(history, memorySession, createObservationMessage(conversationId, toolCall, toolResult));
                 continue;
