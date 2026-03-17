@@ -1,0 +1,35 @@
+package com.xbk.agent.framework.core.llm.adapter.springai;
+
+import com.xbk.agent.framework.core.common.enums.LlmStreamEventType;
+import com.xbk.agent.framework.core.llm.model.LlmStreamEvent;
+import org.springframework.ai.chat.model.ChatResponse;
+
+import java.util.UUID;
+
+/**
+ * Spring AI 流式事件映射器
+ *
+ * 职责：将 Spring AI ChatResponse 转换为框架流式事件
+ *
+ * @author xiexu
+ */
+public class SpringAiStreamEventMapper {
+
+    /**
+     * 转换为框架流式事件
+     *
+     * @param response Spring AI 响应
+     * @return 流式事件
+     */
+    public LlmStreamEvent toEvent(ChatResponse response) {
+        String text = response.getResult() == null || response.getResult().getOutput() == null
+                ? null
+                : response.getResult().getOutput().getText();
+        return LlmStreamEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .type(LlmStreamEventType.COMPLETE)
+                .textDelta(text)
+                .completed(true)
+                .build();
+    }
+}

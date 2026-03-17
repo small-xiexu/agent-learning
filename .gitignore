@@ -41,3 +41,6 @@ build/
 
 ### Local Maven Repository ###
 .m2/
+
+### Git Worktrees ###
+.worktrees/
