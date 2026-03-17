@@ -60,7 +60,10 @@ public class SpringAiLlmClient implements LlmClient {
     @Override
     public LlmResponse chat(LlmRequest request) {
         Prompt prompt = new Prompt(messageMapper.toSpringAiMessages(request.getMessages()),
-                optionsMapper.toChatOptions(request.getModelOptions()));
+                optionsMapper.toChatOptions(
+                        request.getModelOptions(),
+                        request.getAvailableTools(),
+                        request.getToolCallingOptions()));
         ChatResponse response = modelResolver.resolveChatModel().call(prompt);
         return responseMapper.toLlmResponse(request, response);
     }
@@ -72,6 +75,6 @@ public class SpringAiLlmClient implements LlmClient {
      */
     @Override
     public Set<LlmCapability> capabilities() {
-        return EnumSet.of(LlmCapability.SYNC_CHAT);
+        return EnumSet.of(LlmCapability.SYNC_CHAT, LlmCapability.TOOL_CALLING);
     }
 }

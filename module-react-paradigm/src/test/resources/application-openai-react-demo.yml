@@ -1,0 +1,14 @@
+spring:
+  config:
+    import: optional:application-openai-react-demo-local.yml
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      chat:
+        options:
+          model: gpt-4o
+
+demo:
+  react:
+    openai:
+      enabled: ${DEMO_REACT_OPENAI_ENABLED:false}

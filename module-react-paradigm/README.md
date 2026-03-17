@@ -124,6 +124,35 @@ ReAct 最怕“一个万能工具做所有事情”。
 
 当任务明显需要显式规划、复杂状态机或多专家协作时，应升级到 Plan-Replan、Graph Flow 或 Multi-agent 模块，而不是把 ReAct 循环无限堆大。
 
+## 真实 OpenAI 对照 Demo
+
+当前模块同时保留了两套 Demo：
+
+- 离线教学版：
+  - `ReActTravelDemo`
+  - `SpringAIReActTravelDemo`
+- 真实 OpenAI 对照版：
+  - `ReActTravelOpenAiDemo`
+  - `SpringAIReActTravelOpenAiDemo`
+
+真实对照版的设计目标是让手写版 `ReActAgent` 和官方 `ReactAgent` 共用同一个 `ChatModel` 与同一个 `OPENAI_API_KEY`，从而进行真正的控制变量对照学习。
+
+运行真实 Demo 前需要准备：
+
+- 环境变量：`OPENAI_API_KEY`
+- 显式开关：`-Ddemo.react.openai.enabled=true`
+
+如果你更习惯 Spring Boot 本地配置文件，也可以：
+
+1. 复制 `src/test/resources/application-openai-react-demo-local.yml.example`
+2. 重命名为 `src/test/resources/application-openai-react-demo-local.yml`
+3. 把真实 `api-key` 写进这个本地文件
+
+这个本地文件已经被 `.gitignore` 忽略，不会被误提交到仓库。
+
+默认的 `mvn test` 只会运行离线教学版和配置装载测试；  
+真实 OpenAI Demo 在没有 Key 或没有显式开启时会自动跳过，避免日常测试误打外网。
+
 ## 适用场景与边界
 
 ### 适用场景

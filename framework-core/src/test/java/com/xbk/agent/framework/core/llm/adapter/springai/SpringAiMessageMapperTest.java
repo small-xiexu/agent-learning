@@ -5,6 +5,7 @@ import com.xbk.agent.framework.core.memory.Message;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.SystemMessage;
+import org.springframework.ai.chat.messages.ToolResponseMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -66,10 +67,24 @@ class SpringAiMessageMapperTest {
      * 验证暂不支持的角色会快速失败
      */
     @Test
-    void shouldRejectUnsupportedToolRoleInFirstIteration() {
+    void shouldMapToolMessageToSpringAiToolResponseMessage() {
         SpringAiMessageMapper mapper = new SpringAiMessageMapper();
+        Message message = Message.builder()
+                .messageId("tool-msg-1")
+                .conversationId("conv-1")
+                .role(MessageRole.TOOL)
+                .content("晴朗，微风，气温25度")
+                .name("WeatherTool")
+                .toolCallId("call-1")
+                .build();
 
-        assertThrows(IllegalArgumentException.class, () -> mapper.toSpringAiMessage(message(MessageRole.TOOL, "tool")));
+        org.springframework.ai.chat.messages.Message mapped = mapper.toSpringAiMessage(message);
+
+        ToolResponseMessage toolResponseMessage = assertInstanceOf(ToolResponseMessage.class, mapped);
+        assertEquals(1, toolResponseMessage.getResponses().size());
+        assertEquals("call-1", toolResponseMessage.getResponses().getFirst().id());
+        assertEquals("WeatherTool", toolResponseMessage.getResponses().getFirst().name());
+        assertEquals("晴朗，微风，气温25度", toolResponseMessage.getResponses().getFirst().responseData());
     }
 
     /**

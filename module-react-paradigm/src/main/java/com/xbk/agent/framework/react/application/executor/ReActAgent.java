@@ -1,14 +1,17 @@
 package com.xbk.agent.framework.react.application.executor;
 
+import com.xbk.agent.framework.core.common.enums.ToolChoiceMode;
 import com.xbk.agent.framework.core.common.enums.MessageRole;
 import com.xbk.agent.framework.core.llm.HelloAgentsLLM;
 import com.xbk.agent.framework.core.llm.model.LlmRequest;
 import com.xbk.agent.framework.core.llm.model.LlmResponse;
 import com.xbk.agent.framework.core.llm.model.ToolCall;
+import com.xbk.agent.framework.core.llm.option.ToolCallingOptions;
 import com.xbk.agent.framework.core.memory.MemorySession;
 import com.xbk.agent.framework.core.memory.Message;
 import com.xbk.agent.framework.core.memory.support.InMemoryMemory;
 import com.xbk.agent.framework.core.tool.ToolContext;
+import com.xbk.agent.framework.core.tool.ToolDefinition;
 import com.xbk.agent.framework.core.tool.ToolRegistry;
 import com.xbk.agent.framework.core.tool.ToolRequest;
 import com.xbk.agent.framework.core.tool.ToolResult;
@@ -136,11 +139,17 @@ public class ReActAgent {
      * @return LLM 请求
      */
     private LlmRequest buildRequest(String conversationId, List<Message> history) {
+        List<ToolDefinition> toolDefinitions = toolRegistry.definitions();
         return LlmRequest.builder()
                 .requestId(UUID.randomUUID().toString())
                 .conversationId(conversationId)
                 .messages(history)
-                .availableTools(toolRegistry.definitions())
+                .availableTools(toolDefinitions)
+                .toolCallingOptions(ToolCallingOptions.builder()
+                        .enabled(!toolDefinitions.isEmpty())
+                        .toolChoiceMode(ToolChoiceMode.AUTO)
+                        .includeToolResultsInContext(true)
+                        .build())
                 .build();
     }
 

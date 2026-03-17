@@ -44,3 +44,6 @@ build/
 
 ### Git Worktrees ###
 .worktrees/
+
+### Local OpenAI Demo Config ###
+module-react-paradigm/src/test/resources/application-openai-react-demo-local.yml

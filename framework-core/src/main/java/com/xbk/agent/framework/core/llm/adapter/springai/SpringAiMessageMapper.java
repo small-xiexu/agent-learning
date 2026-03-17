@@ -4,9 +4,11 @@ import com.xbk.agent.framework.core.common.enums.MessageRole;
 import com.xbk.agent.framework.core.memory.Message;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.SystemMessage;
+import org.springframework.ai.chat.messages.ToolResponseMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -36,6 +38,15 @@ public class SpringAiMessageMapper {
         }
         if (message.getRole() == MessageRole.ASSISTANT) {
             return new AssistantMessage(message.getContent());
+        }
+        if (message.getRole() == MessageRole.TOOL) {
+            ToolResponseMessage.ToolResponse response = new ToolResponseMessage.ToolResponse(
+                    message.getToolCallId(),
+                    message.getName(),
+                    message.getContent());
+            return ToolResponseMessage.builder()
+                    .responses(Collections.singletonList(response))
+                    .build();
         }
         throw new IllegalArgumentException("unsupported message role: " + message.getRole());
     }
