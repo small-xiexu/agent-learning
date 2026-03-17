@@ -59,12 +59,16 @@ public class ReActTravelDemo {
     }
 
     /**
-     * 验证当模型持续请求工具时，Agent 会在最大步骤后停止
+     * 验证死循环保护是否生效。
+     *
+     * 这里故意注入一个永远不会返回 Final Answer 的假 LLM。
+     * 它每一轮都会继续请求 WeatherTool，因此如果 Agent 没有 maxSteps 安全阀，
+     * 整个 ReAct 循环就会一直执行下去。
      */
     @Test
     public void shouldStopWhenMaxStepsReached() {
         ToolRegistry toolRegistry = createToolRegistry();
-        ReActAgent reactAgent = new ReActAgent(new LoopingHelloAgentsLLM(), toolRegistry, 2);
+        ReActAgent reactAgent = new ReActAgent(new AlwaysToolCallingHelloAgentsLLM(), toolRegistry, 2);
 
         String answer = reactAgent.run(USER_QUERY);
 
@@ -261,16 +265,22 @@ public class ReActTravelDemo {
     }
 
     /**
-     * 无限工具调用假 LLM
+     * 持续发起工具调用的假 LLM
      *
-     * 职责：用于验证 maxSteps 安全阀
+     * 职责：模拟一种不会自然收敛的坏场景。
+     * 它每次被调用时都只会返回新的工具请求，不会生成 Final Answer，
+     * 因此专门用于验证 ReActAgent 的 maxSteps 安全阀是否真的能阻止死循环。
      *
      * @author xiexu
      */
-    private static final class LoopingHelloAgentsLLM implements HelloAgentsLLM {
+    private static final class AlwaysToolCallingHelloAgentsLLM implements HelloAgentsLLM {
 
         /**
          * 执行同步对话
+         *
+         * 每次都返回同一个 WeatherTool 调用请求。
+         * 这样下一轮即使把 Observation 回填给模型，模型仍然会继续要求调用工具，
+         * 从而制造“永远不结束”的循环场景。
          *
          * @param request LLM 请求
          * @return LLM 响应
