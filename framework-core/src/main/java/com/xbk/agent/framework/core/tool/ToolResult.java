@@ -13,17 +13,29 @@ import java.util.Map;
  */
 public final class ToolResult {
 
-    /** 标记本次工具执行是否成功。 */
+    /**
+     * 标记本次工具执行是否成功。
+     */
     private final boolean success;
-    /** 面向模型或调用方返回的文本结果。 */
+    /**
+     * 面向模型或调用方返回的文本结果。
+     */
     private final String content;
-    /** 面向流程编排或状态机消费的结构化结果。 */
+    /**
+     * 面向流程编排或状态机消费的结构化结果。
+     */
     private final Map<String, Object> structuredData;
-    /** 失败场景下的错误码。 */
+    /**
+     * 失败场景下的错误码。
+     */
     private final String errorCode;
-    /** 失败场景下的错误消息。 */
+    /**
+     * 失败场景下的错误消息。
+     */
     private final String errorMessage;
-    /** 结果级扩展元数据，可承载附加上下文和调试信息。 */
+    /**
+     * 结果级扩展元数据，可承载附加上下文和调试信息。
+     */
     private final Map<String, Object> metadata;
 
     /**

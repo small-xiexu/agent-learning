@@ -9,11 +9,17 @@ package com.xbk.agent.framework.core.llm.model;
  */
 public final class ToolCallDelta {
 
-    /** 工具调用标识，用于把多段增量拼接回同一次工具调用。 */
+    /**
+     * 工具调用标识，用于把多段增量拼接回同一次工具调用。
+     */
     private final String toolCallId;
-    /** 当前增量所属的工具名称。 */
+    /**
+     * 当前增量所属的工具名称。
+     */
     private final String toolName;
-    /** 参数文本的增量片段，供流式场景逐步拼接完整参数。 */
+    /**
+     * 参数文本的增量片段，供流式场景逐步拼接完整参数。
+     */
     private final String partialArgumentsText;
 
     /**

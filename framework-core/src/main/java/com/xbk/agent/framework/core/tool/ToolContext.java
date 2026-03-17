@@ -16,15 +16,25 @@ import java.util.Objects;
  */
 public final class ToolContext {
 
-    /** 当前工具调用所属的会话标识。 */
+    /**
+     * 当前工具调用所属的会话标识。
+     */
     private final String conversationId;
-    /** 发起本次工具调用的智能体标识。 */
+    /**
+     * 发起本次工具调用的智能体标识。
+     */
     private final String agentId;
-    /** 当前调用轮次标识，可用于区分同一会话中的不同步骤。 */
+    /**
+     * 当前调用轮次标识，可用于区分同一会话中的不同步骤。
+     */
     private final String turnId;
-    /** 当前会话的记忆视图，允许工具读取或补充上下文。 */
+    /**
+     * 当前会话的记忆视图，允许工具读取或补充上下文。
+     */
     private final MemorySession memorySession;
-    /** 工具上下文共享属性，用于传递额外运行时数据。 */
+    /**
+     * 工具上下文共享属性，用于传递额外运行时数据。
+     */
     private final Map<String, Object> attributes;
 
     /**

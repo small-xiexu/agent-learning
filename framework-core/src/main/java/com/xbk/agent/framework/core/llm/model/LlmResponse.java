@@ -17,21 +17,37 @@ import java.util.Map;
  */
 public final class LlmResponse {
 
-    /** 对应请求的标识，用于和 LlmRequest 建立一一对应关系。 */
+    /**
+     * 对应请求的标识，用于和 LlmRequest 建立一一对应关系。
+     */
     private final String requestId;
-    /** 当前响应自身的唯一标识，用于日志与审计。 */
+    /**
+     * 当前响应自身的唯一标识，用于日志与审计。
+     */
     private final String responseId;
-    /** 框架标准化后的输出消息，通常对应最终 assistant 消息。 */
+    /**
+     * 框架标准化后的输出消息，通常对应最终 assistant 消息。
+     */
     private final Message outputMessage;
-    /** 底层模型返回的原始文本，可作为兜底展示或调试信息。 */
+    /**
+     * 底层模型返回的原始文本，可作为兜底展示或调试信息。
+     */
     private final String rawText;
-    /** 模型给出的工具调用指令集合。 */
+    /**
+     * 模型给出的工具调用指令集合。
+     */
     private final List<ToolCall> toolCalls;
-    /** 当前响应结束的原因，例如正常停止或转入工具调用。 */
+    /**
+     * 当前响应结束的原因，例如正常停止或转入工具调用。
+     */
     private final LlmFinishReason finishReason;
-    /** 本次调用的 token 用量统计。 */
+    /**
+     * 本次调用的 token 用量统计。
+     */
     private final LlmUsage usage;
-    /** 响应级扩展元数据，可承载底层模型与链路附加信息。 */
+    /**
+     * 响应级扩展元数据，可承载底层模型与链路附加信息。
+     */
     private final Map<String, Object> metadata;
 
     /**

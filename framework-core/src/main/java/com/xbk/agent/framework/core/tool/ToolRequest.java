@@ -13,13 +13,21 @@ import java.util.Map;
  */
 public final class ToolRequest {
 
-    /** 本次调用期望执行的工具名称。 */
+    /**
+     * 本次调用期望执行的工具名称。
+     */
     private final String toolName;
-    /** 单次调用标识，用于关联工具执行日志与返回结果。 */
+    /**
+     * 单次调用标识，用于关联工具执行日志与返回结果。
+     */
     private final String invocationId;
-    /** 本次工具调用的参数映射。 */
+    /**
+     * 本次工具调用的参数映射。
+     */
     private final Map<String, Object> arguments;
-    /** 调用级扩展元数据，可承载附加标签或调试信息。 */
+    /**
+     * 调用级扩展元数据，可承载附加标签或调试信息。
+     */
     private final Map<String, Object> metadata;
 
     /**

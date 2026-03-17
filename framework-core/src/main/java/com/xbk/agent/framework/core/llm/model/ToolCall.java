@@ -13,11 +13,17 @@ import java.util.Map;
  */
 public final class ToolCall {
 
-    /** 单次工具调用标识，用于与工具结果或流式片段对齐。 */
+    /**
+     * 单次工具调用标识，用于与工具结果或流式片段对齐。
+     */
     private final String toolCallId;
-    /** 模型请求调用的工具名称。 */
+    /**
+     * 模型请求调用的工具名称。
+     */
     private final String toolName;
-    /** 传递给工具的结构化参数。 */
+    /**
+     * 传递给工具的结构化参数。
+     */
     private final Map<String, Object> arguments;
 
     /**

@@ -15,19 +15,33 @@ import java.util.Map;
  */
 public final class ModelOptions {
 
-    /** 期望调用的模型名称，不指定时由底层适配器决定默认模型。 */
+    /**
+     * 期望调用的模型名称，不指定时由底层适配器决定默认模型。
+     */
     private final String modelName;
-    /** 温度参数，控制输出随机性与发散程度。 */
+    /**
+     * 温度参数，控制输出随机性与发散程度。
+     */
     private final Double temperature;
-    /** topP 参数，控制采样概率分布截断范围。 */
+    /**
+     * topP 参数，控制采样概率分布截断范围。
+     */
     private final Double topP;
-    /** 单次响应允许生成的最大 token 数。 */
+    /**
+     * 单次响应允许生成的最大 token 数。
+     */
     private final Integer maxTokens;
-    /** 触发停止生成的序列列表。 */
+    /**
+     * 触发停止生成的序列列表。
+     */
     private final List<String> stopSequences;
-    /** 模型调用超时时间。 */
+    /**
+     * 模型调用超时时间。
+     */
     private final Duration timeout;
-    /** 面向特定模型厂商的扩展提示，不应替代统一协议字段。 */
+    /**
+     * 面向特定模型厂商的扩展提示，不应替代统一协议字段。
+     */
     private final Map<String, Object> providerHints;
 
     /**

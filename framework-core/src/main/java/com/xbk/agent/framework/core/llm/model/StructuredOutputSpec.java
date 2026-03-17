@@ -10,13 +10,21 @@ package com.xbk.agent.framework.core.llm.model;
  */
 public final class StructuredOutputSpec<T> {
 
-    /** 结构化输出目标类型，决定最终反序列化的 Java 类型。 */
+    /**
+     * 结构化输出目标类型，决定最终反序列化的 Java 类型。
+     */
     private final Class<T> targetType;
-    /** 结构化输出 schema 名称，用于定义输出契约身份。 */
+    /**
+     * 结构化输出 schema 名称，用于定义输出契约身份。
+     */
     private final String schemaName;
-    /** 结构化输出 schema 描述，用于向模型解释字段语义。 */
+    /**
+     * 结构化输出 schema 描述，用于向模型解释字段语义。
+     */
     private final String schemaDescription;
-    /** 是否启用严格校验，决定是否允许偏离既定 schema。 */
+    /**
+     * 是否启用严格校验，决定是否允许偏离既定 schema。
+     */
     private final boolean strict;
 
     /**

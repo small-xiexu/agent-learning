@@ -17,21 +17,37 @@ import java.util.Objects;
  */
 public final class Message {
 
-    /** 消息唯一标识，用于追踪、去重与引用。 */
+    /**
+     * 消息唯一标识，用于追踪、去重与引用。
+     */
     private final String messageId;
-    /** 消息所属会话标识，用于隔离不同对话上下文。 */
+    /**
+     * 消息所属会话标识，用于隔离不同对话上下文。
+     */
     private final String conversationId;
-    /** 消息角色，决定消息在上下文中的语义位置。 */
+    /**
+     * 消息角色，决定消息在上下文中的语义位置。
+     */
     private final MessageRole role;
-    /** 消息主体内容，承载对话文本、思考结果或观察结果。 */
+    /**
+     * 消息主体内容，承载对话文本、思考结果或观察结果。
+     */
     private final String content;
-    /** 消息可选名称，可用于角色名、参与者名或工具名。 */
+    /**
+     * 消息可选名称，可用于角色名、参与者名或工具名。
+     */
     private final String name;
-    /** 工具调用关联标识，用于把一次调用请求与工具结果对应起来。 */
+    /**
+     * 工具调用关联标识，用于把一次调用请求与工具结果对应起来。
+     */
     private final String toolCallId;
-    /** 扩展元数据槽位，只承载附加信息，不替代核心协议字段。 */
+    /**
+     * 扩展元数据槽位，只承载附加信息，不替代核心协议字段。
+     */
     private final Map<String, Object> metadata;
-    /** 消息创建时间，未显式指定时在构建阶段自动生成。 */
+    /**
+     * 消息创建时间，未显式指定时在构建阶段自动生成。
+     */
     private final Instant createdAt;
 
     /**

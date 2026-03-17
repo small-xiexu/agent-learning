@@ -10,11 +10,17 @@ package com.xbk.agent.framework.core.llm.model;
  */
 public final class StructuredLlmResponse<T> {
 
-    /** 通用 LLM 响应部分，保留文本、工具和用量等公共信息。 */
+    /**
+     * 通用 LLM 响应部分，保留文本、工具和用量等公共信息。
+     */
     private final LlmResponse response;
-    /** 反序列化后的结构化输出对象。 */
+    /**
+     * 反序列化后的结构化输出对象。
+     */
     private final T structuredOutput;
-    /** 标记结构化输出是否通过了预期 schema 校验。 */
+    /**
+     * 标记结构化输出是否通过了预期 schema 校验。
+     */
     private final boolean schemaValidated;
 
     /**

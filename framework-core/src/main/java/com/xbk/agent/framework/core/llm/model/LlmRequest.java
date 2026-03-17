@@ -21,23 +21,41 @@ import java.util.Map;
  */
 public final class LlmRequest {
 
-    /** 单次 LLM 调用请求标识，用于链路追踪与响应对账。 */
+    /**
+     * 单次 LLM 调用请求标识，用于链路追踪与响应对账。
+     */
     private final String requestId;
-    /** 当前调用归属的会话标识，用于多轮上下文隔离。 */
+    /**
+     * 当前调用归属的会话标识，用于多轮上下文隔离。
+     */
     private final String conversationId;
-    /** 本轮请求发送给模型的完整消息列表。 */
+    /**
+     * 本轮请求发送给模型的完整消息列表。
+     */
     private final List<Message> messages;
-    /** 当前允许模型感知和调用的工具定义集合。 */
+    /**
+     * 当前允许模型感知和调用的工具定义集合。
+     */
     private final List<ToolDefinition> availableTools;
-    /** 基础模型参数，例如模型名、温度、最大输出长度。 */
+    /**
+     * 基础模型参数，例如模型名、温度、最大输出长度。
+     */
     private final ModelOptions modelOptions;
-    /** 流式输出行为配置，仅在流式调用路径下生效。 */
+    /**
+     * 流式输出行为配置，仅在流式调用路径下生效。
+     */
     private final StreamingOptions streamingOptions;
-    /** 结构化输出行为配置，用于约束 schema 相关能力。 */
+    /**
+     * 结构化输出行为配置，用于约束 schema 相关能力。
+     */
     private final StructuredOutputOptions structuredOutputOptions;
-    /** 工具调用行为配置，用于约束模型如何使用工具。 */
+    /**
+     * 工具调用行为配置，用于约束模型如何使用工具。
+     */
     private final ToolCallingOptions toolCallingOptions;
-    /** 请求级扩展元数据，可承载追踪、租户和调试标签。 */
+    /**
+     * 请求级扩展元数据，可承载追踪、租户和调试标签。
+     */
     private final Map<String, Object> metadata;
 
     /**

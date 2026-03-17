@@ -15,19 +15,33 @@ import java.util.Map;
  */
 public final class LlmStreamEvent {
 
-    /** 当前流式事件的唯一标识。 */
+    /**
+     * 当前流式事件的唯一标识。
+     */
     private final String eventId;
-    /** 事件类型，决定当前增量应按文本、工具或结束事件解释。 */
+    /**
+     * 事件类型，决定当前增量应按文本、工具或结束事件解释。
+     */
     private final LlmStreamEventType type;
-    /** 文本增量片段，仅在文本流式输出时有值。 */
+    /**
+     * 文本增量片段，仅在文本流式输出时有值。
+     */
     private final String textDelta;
-    /** 工具调用增量片段，仅在工具调用流式输出时有值。 */
+    /**
+     * 工具调用增量片段，仅在工具调用流式输出时有值。
+     */
     private final ToolCallDelta toolCallDelta;
-    /** 截止当前事件的用量信息，通常在完成事件时最有参考价值。 */
+    /**
+     * 截止当前事件的用量信息，通常在完成事件时最有参考价值。
+     */
     private final LlmUsage usage;
-    /** 标记当前事件是否代表一次流式调用已经完成。 */
+    /**
+     * 标记当前事件是否代表一次流式调用已经完成。
+     */
     private final boolean completed;
-    /** 事件级扩展元数据，用于调试和底层兼容信息传递。 */
+    /**
+     * 事件级扩展元数据，用于调试和底层兼容信息传递。
+     */
     private final Map<String, Object> metadata;
 
     /**
