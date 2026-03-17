@@ -19,6 +19,9 @@
         <module>module-reflection-paradigm</module>
         <module>module-graph-flow-paradigm</module>
         <module>module-multi-agent-supervisor</module>
+        <module>module-multi-agent-conversation</module>
+        <module>module-multi-agent-engineering</module>
+        <module>module-multi-agent-roleplay</module>
     </modules>
 
     <properties>
@@ -110,6 +113,21 @@
                 <artifactId>module-multi-agent-supervisor</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>module-multi-agent-conversation</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>module-multi-agent-engineering</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>module-multi-agent-roleplay</artifactId>
+                <version>${project.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -129,6 +147,11 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-enforcer-plugin</artifactId>
                     <version>3.6.2</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.5.4</version>
                 </plugin>
             </plugins>
         </pluginManagement>
