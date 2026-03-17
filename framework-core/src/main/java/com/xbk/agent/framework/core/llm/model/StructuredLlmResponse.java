@@ -10,8 +10,11 @@ package com.xbk.agent.framework.core.llm.model;
  */
 public final class StructuredLlmResponse<T> {
 
+    /** 通用 LLM 响应部分，保留文本、工具和用量等公共信息。 */
     private final LlmResponse response;
+    /** 反序列化后的结构化输出对象。 */
     private final T structuredOutput;
+    /** 标记结构化输出是否通过了预期 schema 校验。 */
     private final boolean schemaValidated;
 
     /**
@@ -35,29 +38,14 @@ public final class StructuredLlmResponse<T> {
         return new Builder<T>();
     }
 
-    /**
-     * 返回通用响应
-     *
-     * @return 通用响应
-     */
     public LlmResponse getResponse() {
         return response;
     }
 
-    /**
-     * 返回结构化输出
-     *
-     * @return 结构化输出
-     */
     public T getStructuredOutput() {
         return structuredOutput;
     }
 
-    /**
-     * 返回是否通过 schema 校验
-     *
-     * @return 是否通过 schema 校验
-     */
     public boolean isSchemaValidated() {
         return schemaValidated;
     }

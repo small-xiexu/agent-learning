@@ -9,10 +9,15 @@ package com.xbk.agent.framework.core.llm.option;
  */
 public final class StreamingOptions {
 
+    /** 是否启用流式输出能力。 */
     private final boolean enabled;
+    /** 是否向上游发出文本增量事件。 */
     private final boolean emitTextDelta;
+    /** 是否向上游发出工具调用增量事件。 */
     private final boolean emitToolCallDelta;
+    /** 是否在流式完成时追加用量信息。 */
     private final boolean emitUsageOnComplete;
+    /** 是否在流结束后聚合出最终完整消息。 */
     private final boolean aggregateFinalMessage;
 
     /**
@@ -37,47 +42,22 @@ public final class StreamingOptions {
         return new Builder();
     }
 
-    /**
-     * 返回是否启用流式输出
-     *
-     * @return 是否启用
-     */
     public boolean isEnabled() {
         return enabled;
     }
 
-    /**
-     * 返回是否输出文本增量
-     *
-     * @return 是否输出文本增量
-     */
     public boolean isEmitTextDelta() {
         return emitTextDelta;
     }
 
-    /**
-     * 返回是否输出工具调用增量
-     *
-     * @return 是否输出工具调用增量
-     */
     public boolean isEmitToolCallDelta() {
         return emitToolCallDelta;
     }
 
-    /**
-     * 返回是否在完成时输出用量
-     *
-     * @return 是否输出用量
-     */
     public boolean isEmitUsageOnComplete() {
         return emitUsageOnComplete;
     }
 
-    /**
-     * 返回是否聚合最终消息
-     *
-     * @return 是否聚合最终消息
-     */
     public boolean isAggregateFinalMessage() {
         return aggregateFinalMessage;
     }

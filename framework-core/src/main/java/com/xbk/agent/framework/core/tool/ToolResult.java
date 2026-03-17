@@ -13,11 +13,17 @@ import java.util.Map;
  */
 public final class ToolResult {
 
+    /** 标记本次工具执行是否成功。 */
     private final boolean success;
+    /** 面向模型或调用方返回的文本结果。 */
     private final String content;
+    /** 面向流程编排或状态机消费的结构化结果。 */
     private final Map<String, Object> structuredData;
+    /** 失败场景下的错误码。 */
     private final String errorCode;
+    /** 失败场景下的错误消息。 */
     private final String errorMessage;
+    /** 结果级扩展元数据，可承载附加上下文和调试信息。 */
     private final Map<String, Object> metadata;
 
     /**
@@ -43,56 +49,26 @@ public final class ToolResult {
         return new Builder();
     }
 
-    /**
-     * 返回是否成功
-     *
-     * @return 是否成功
-     */
     public boolean isSuccess() {
         return success;
     }
 
-    /**
-     * 返回文本结果
-     *
-     * @return 文本结果
-     */
     public String getContent() {
         return content;
     }
 
-    /**
-     * 返回结构化结果
-     *
-     * @return 结构化结果
-     */
     public Map<String, Object> getStructuredData() {
         return structuredData;
     }
 
-    /**
-     * 返回错误码
-     *
-     * @return 错误码
-     */
     public String getErrorCode() {
         return errorCode;
     }
 
-    /**
-     * 返回错误消息
-     *
-     * @return 错误消息
-     */
     public String getErrorMessage() {
         return errorMessage;
     }
 
-    /**
-     * 返回元数据
-     *
-     * @return 元数据
-     */
     public Map<String, Object> getMetadata() {
         return metadata;
     }

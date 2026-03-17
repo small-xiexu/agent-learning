@@ -14,11 +14,17 @@ import java.util.Map;
  */
 public final class ToolDefinition {
 
+    /** 工具唯一名称，是模型选择工具和注册中心查找工具的关键键。 */
     private final String name;
+    /** 工具职责描述，供模型理解该工具的适用场景。 */
     private final String description;
+    /** 工具输入结构定义，用于约束参数形态和字段语义。 */
     private final Map<String, Object> inputSchema;
+    /** 工具输出语义说明，用于帮助模型理解调用结果。 */
     private final String outputDescription;
+    /** 工具标签集合，可用于分类、过滤和路由。 */
     private final List<String> tags;
+    /** 标记工具是否幂等，供调度和重试策略参考。 */
     private final boolean idempotent;
 
     /**
@@ -44,56 +50,26 @@ public final class ToolDefinition {
         return new Builder();
     }
 
-    /**
-     * 返回工具名称
-     *
-     * @return 工具名称
-     */
     public String getName() {
         return name;
     }
 
-    /**
-     * 返回工具描述
-     *
-     * @return 工具描述
-     */
     public String getDescription() {
         return description;
     }
 
-    /**
-     * 返回输入结构定义
-     *
-     * @return 输入结构定义
-     */
     public Map<String, Object> getInputSchema() {
         return inputSchema;
     }
 
-    /**
-     * 返回输出描述
-     *
-     * @return 输出描述
-     */
     public String getOutputDescription() {
         return outputDescription;
     }
 
-    /**
-     * 返回标签列表
-     *
-     * @return 标签列表
-     */
     public List<String> getTags() {
         return tags;
     }
 
-    /**
-     * 返回是否幂等
-     *
-     * @return 是否幂等
-     */
     public boolean isIdempotent() {
         return idempotent;
     }

@@ -17,13 +17,21 @@ import java.util.Map;
  */
 public final class LlmResponse {
 
+    /** 对应请求的标识，用于和 LlmRequest 建立一一对应关系。 */
     private final String requestId;
+    /** 当前响应自身的唯一标识，用于日志与审计。 */
     private final String responseId;
+    /** 框架标准化后的输出消息，通常对应最终 assistant 消息。 */
     private final Message outputMessage;
+    /** 底层模型返回的原始文本，可作为兜底展示或调试信息。 */
     private final String rawText;
+    /** 模型给出的工具调用指令集合。 */
     private final List<ToolCall> toolCalls;
+    /** 当前响应结束的原因，例如正常停止或转入工具调用。 */
     private final LlmFinishReason finishReason;
+    /** 本次调用的 token 用量统计。 */
     private final LlmUsage usage;
+    /** 响应级扩展元数据，可承载底层模型与链路附加信息。 */
     private final Map<String, Object> metadata;
 
     /**
@@ -51,74 +59,34 @@ public final class LlmResponse {
         return new Builder();
     }
 
-    /**
-     * 返回请求标识
-     *
-     * @return 请求标识
-     */
     public String getRequestId() {
         return requestId;
     }
 
-    /**
-     * 返回响应标识
-     *
-     * @return 响应标识
-     */
     public String getResponseId() {
         return responseId;
     }
 
-    /**
-     * 返回输出消息
-     *
-     * @return 输出消息
-     */
     public Message getOutputMessage() {
         return outputMessage;
     }
 
-    /**
-     * 返回原始文本
-     *
-     * @return 原始文本
-     */
     public String getRawText() {
         return rawText;
     }
 
-    /**
-     * 返回工具调用列表
-     *
-     * @return 工具调用列表
-     */
     public List<ToolCall> getToolCalls() {
         return toolCalls;
     }
 
-    /**
-     * 返回结束原因
-     *
-     * @return 结束原因
-     */
     public LlmFinishReason getFinishReason() {
         return finishReason;
     }
 
-    /**
-     * 返回用量信息
-     *
-     * @return 用量信息
-     */
     public LlmUsage getUsage() {
         return usage;
     }
 
-    /**
-     * 返回元数据
-     *
-     * @return 元数据
-     */
     public Map<String, Object> getMetadata() {
         return metadata;
     }

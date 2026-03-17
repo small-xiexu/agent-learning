@@ -9,10 +9,15 @@ package com.xbk.agent.framework.core.llm.option;
  */
 public final class StructuredOutputOptions {
 
+    /** 是否启用结构化输出模式。 */
     private final boolean enabled;
+    /** 输出 schema 名称，用于区分不同结构化协议。 */
     private final String schemaName;
+    /** 输出 schema 描述，用于帮助模型理解结构化目标。 */
     private final String schemaDescription;
+    /** 是否要求模型严格遵循 schema。 */
     private final boolean strict;
+    /** 结构化解析失败时是否保留原始文本作为回退结果。 */
     private final boolean includeRawTextFallback;
 
     /**
@@ -37,47 +42,22 @@ public final class StructuredOutputOptions {
         return new Builder();
     }
 
-    /**
-     * 返回是否启用结构化输出
-     *
-     * @return 是否启用
-     */
     public boolean isEnabled() {
         return enabled;
     }
 
-    /**
-     * 返回 schema 名称
-     *
-     * @return schema 名称
-     */
     public String getSchemaName() {
         return schemaName;
     }
 
-    /**
-     * 返回 schema 描述
-     *
-     * @return schema 描述
-     */
     public String getSchemaDescription() {
         return schemaDescription;
     }
 
-    /**
-     * 返回是否严格校验
-     *
-     * @return 是否严格校验
-     */
     public boolean isStrict() {
         return strict;
     }
 
-    /**
-     * 返回是否包含文本回退
-     *
-     * @return 是否包含文本回退
-     */
     public boolean isIncludeRawTextFallback() {
         return includeRawTextFallback;
     }

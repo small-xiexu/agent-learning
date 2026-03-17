@@ -13,9 +13,13 @@ import java.util.Map;
  */
 public final class ToolRequest {
 
+    /** 本次调用期望执行的工具名称。 */
     private final String toolName;
+    /** 单次调用标识，用于关联工具执行日志与返回结果。 */
     private final String invocationId;
+    /** 本次工具调用的参数映射。 */
     private final Map<String, Object> arguments;
+    /** 调用级扩展元数据，可承载附加标签或调试信息。 */
     private final Map<String, Object> metadata;
 
     /**
@@ -39,38 +43,18 @@ public final class ToolRequest {
         return new Builder();
     }
 
-    /**
-     * 返回工具名称
-     *
-     * @return 工具名称
-     */
     public String getToolName() {
         return toolName;
     }
 
-    /**
-     * 返回调用标识
-     *
-     * @return 调用标识
-     */
     public String getInvocationId() {
         return invocationId;
     }
 
-    /**
-     * 返回参数映射
-     *
-     * @return 参数映射
-     */
     public Map<String, Object> getArguments() {
         return arguments;
     }
 
-    /**
-     * 返回元数据
-     *
-     * @return 元数据
-     */
     public Map<String, Object> getMetadata() {
         return metadata;
     }

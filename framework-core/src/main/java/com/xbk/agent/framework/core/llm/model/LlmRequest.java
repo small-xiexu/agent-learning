@@ -21,14 +21,23 @@ import java.util.Map;
  */
 public final class LlmRequest {
 
+    /** 单次 LLM 调用请求标识，用于链路追踪与响应对账。 */
     private final String requestId;
+    /** 当前调用归属的会话标识，用于多轮上下文隔离。 */
     private final String conversationId;
+    /** 本轮请求发送给模型的完整消息列表。 */
     private final List<Message> messages;
+    /** 当前允许模型感知和调用的工具定义集合。 */
     private final List<ToolDefinition> availableTools;
+    /** 基础模型参数，例如模型名、温度、最大输出长度。 */
     private final ModelOptions modelOptions;
+    /** 流式输出行为配置，仅在流式调用路径下生效。 */
     private final StreamingOptions streamingOptions;
+    /** 结构化输出行为配置，用于约束 schema 相关能力。 */
     private final StructuredOutputOptions structuredOutputOptions;
+    /** 工具调用行为配置，用于约束模型如何使用工具。 */
     private final ToolCallingOptions toolCallingOptions;
+    /** 请求级扩展元数据，可承载追踪、租户和调试标签。 */
     private final Map<String, Object> metadata;
 
     /**
@@ -57,83 +66,38 @@ public final class LlmRequest {
         return new Builder();
     }
 
-    /**
-     * 返回请求标识
-     *
-     * @return 请求标识
-     */
     public String getRequestId() {
         return requestId;
     }
 
-    /**
-     * 返回会话标识
-     *
-     * @return 会话标识
-     */
     public String getConversationId() {
         return conversationId;
     }
 
-    /**
-     * 返回消息列表
-     *
-     * @return 消息列表
-     */
     public List<Message> getMessages() {
         return messages;
     }
 
-    /**
-     * 返回可用工具定义
-     *
-     * @return 工具定义列表
-     */
     public List<ToolDefinition> getAvailableTools() {
         return availableTools;
     }
 
-    /**
-     * 返回模型选项
-     *
-     * @return 模型选项
-     */
     public ModelOptions getModelOptions() {
         return modelOptions;
     }
 
-    /**
-     * 返回流式选项
-     *
-     * @return 流式选项
-     */
     public StreamingOptions getStreamingOptions() {
         return streamingOptions;
     }
 
-    /**
-     * 返回结构化输出选项
-     *
-     * @return 结构化输出选项
-     */
     public StructuredOutputOptions getStructuredOutputOptions() {
         return structuredOutputOptions;
     }
 
-    /**
-     * 返回工具调用选项
-     *
-     * @return 工具调用选项
-     */
     public ToolCallingOptions getToolCallingOptions() {
         return toolCallingOptions;
     }
 
-    /**
-     * 返回元数据
-     *
-     * @return 元数据
-     */
     public Map<String, Object> getMetadata() {
         return metadata;
     }

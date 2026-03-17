@@ -15,12 +15,19 @@ import java.util.Map;
  */
 public final class ModelOptions {
 
+    /** 期望调用的模型名称，不指定时由底层适配器决定默认模型。 */
     private final String modelName;
+    /** 温度参数，控制输出随机性与发散程度。 */
     private final Double temperature;
+    /** topP 参数，控制采样概率分布截断范围。 */
     private final Double topP;
+    /** 单次响应允许生成的最大 token 数。 */
     private final Integer maxTokens;
+    /** 触发停止生成的序列列表。 */
     private final List<String> stopSequences;
+    /** 模型调用超时时间。 */
     private final Duration timeout;
+    /** 面向特定模型厂商的扩展提示，不应替代统一协议字段。 */
     private final Map<String, Object> providerHints;
 
     /**
@@ -47,65 +54,30 @@ public final class ModelOptions {
         return new Builder();
     }
 
-    /**
-     * 返回模型名称
-     *
-     * @return 模型名称
-     */
     public String getModelName() {
         return modelName;
     }
 
-    /**
-     * 返回温度参数
-     *
-     * @return 温度参数
-     */
     public Double getTemperature() {
         return temperature;
     }
 
-    /**
-     * 返回 topP 参数
-     *
-     * @return topP 参数
-     */
     public Double getTopP() {
         return topP;
     }
 
-    /**
-     * 返回最大令牌数
-     *
-     * @return 最大令牌数
-     */
     public Integer getMaxTokens() {
         return maxTokens;
     }
 
-    /**
-     * 返回停止序列
-     *
-     * @return 停止序列
-     */
     public List<String> getStopSequences() {
         return stopSequences;
     }
 
-    /**
-     * 返回超时时间
-     *
-     * @return 超时时间
-     */
     public Duration getTimeout() {
         return timeout;
     }
 
-    /**
-     * 返回厂商提示信息
-     *
-     * @return 厂商提示信息
-     */
     public Map<String, Object> getProviderHints() {
         return providerHints;
     }

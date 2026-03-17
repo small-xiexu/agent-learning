@@ -9,8 +9,11 @@ package com.xbk.agent.framework.core.llm.model;
  */
 public final class ToolCallDelta {
 
+    /** 工具调用标识，用于把多段增量拼接回同一次工具调用。 */
     private final String toolCallId;
+    /** 当前增量所属的工具名称。 */
     private final String toolName;
+    /** 参数文本的增量片段，供流式场景逐步拼接完整参数。 */
     private final String partialArgumentsText;
 
     /**
@@ -33,29 +36,14 @@ public final class ToolCallDelta {
         return new Builder();
     }
 
-    /**
-     * 返回工具调用标识
-     *
-     * @return 工具调用标识
-     */
     public String getToolCallId() {
         return toolCallId;
     }
 
-    /**
-     * 返回工具名称
-     *
-     * @return 工具名称
-     */
     public String getToolName() {
         return toolName;
     }
 
-    /**
-     * 返回参数文本片段
-     *
-     * @return 参数文本片段
-     */
     public String getPartialArgumentsText() {
         return partialArgumentsText;
     }

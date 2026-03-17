@@ -13,8 +13,11 @@ import java.util.Map;
  */
 public final class ToolCall {
 
+    /** 单次工具调用标识，用于与工具结果或流式片段对齐。 */
     private final String toolCallId;
+    /** 模型请求调用的工具名称。 */
     private final String toolName;
+    /** 传递给工具的结构化参数。 */
     private final Map<String, Object> arguments;
 
     /**
@@ -37,29 +40,14 @@ public final class ToolCall {
         return new Builder();
     }
 
-    /**
-     * 返回工具调用标识
-     *
-     * @return 工具调用标识
-     */
     public String getToolCallId() {
         return toolCallId;
     }
 
-    /**
-     * 返回工具名称
-     *
-     * @return 工具名称
-     */
     public String getToolName() {
         return toolName;
     }
 
-    /**
-     * 返回调用参数
-     *
-     * @return 调用参数
-     */
     public Map<String, Object> getArguments() {
         return arguments;
     }

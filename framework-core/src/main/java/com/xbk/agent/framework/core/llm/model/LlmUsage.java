@@ -9,8 +9,11 @@ package com.xbk.agent.framework.core.llm.model;
  */
 public final class LlmUsage {
 
+    /** 输入提示消耗的 token 数量。 */
     private final int inputTokens;
+    /** 输出内容消耗的 token 数量。 */
     private final int outputTokens;
+    /** 当前调用总 token 数，通常等于输入与输出之和。 */
     private final int totalTokens;
 
     /**
@@ -33,29 +36,14 @@ public final class LlmUsage {
         return new Builder();
     }
 
-    /**
-     * 返回输入 token 数
-     *
-     * @return 输入 token 数
-     */
     public int getInputTokens() {
         return inputTokens;
     }
 
-    /**
-     * 返回输出 token 数
-     *
-     * @return 输出 token 数
-     */
     public int getOutputTokens() {
         return outputTokens;
     }
 
-    /**
-     * 返回总 token 数
-     *
-     * @return 总 token 数
-     */
     public int getTotalTokens() {
         return totalTokens;
     }

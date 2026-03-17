@@ -11,10 +11,15 @@ import com.xbk.agent.framework.core.common.enums.ToolChoiceMode;
  */
 public final class ToolCallingOptions {
 
+    /** 是否启用工具调用能力。 */
     private final boolean enabled;
+    /** 工具选择模式，控制模型是自动选择还是被强制调用工具。 */
     private final ToolChoiceMode toolChoiceMode;
+    /** 是否允许模型在一次轮次中并行发起多个工具调用。 */
     private final boolean parallelToolCalls;
+    /** 模型与工具之间允许发生的最大往返次数。 */
     private final int maxToolRoundTrips;
+    /** 工具结果是否自动写回下一轮模型上下文。 */
     private final boolean includeToolResultsInContext;
 
     /**
@@ -39,47 +44,22 @@ public final class ToolCallingOptions {
         return new Builder();
     }
 
-    /**
-     * 返回是否启用工具调用
-     *
-     * @return 是否启用
-     */
     public boolean isEnabled() {
         return enabled;
     }
 
-    /**
-     * 返回工具选择模式
-     *
-     * @return 工具选择模式
-     */
     public ToolChoiceMode getToolChoiceMode() {
         return toolChoiceMode;
     }
 
-    /**
-     * 返回是否允许并行工具调用
-     *
-     * @return 是否允许并行工具调用
-     */
     public boolean isParallelToolCalls() {
         return parallelToolCalls;
     }
 
-    /**
-     * 返回最大工具往返次数
-     *
-     * @return 最大工具往返次数
-     */
     public int getMaxToolRoundTrips() {
         return maxToolRoundTrips;
     }
 
-    /**
-     * 返回是否将工具结果回写上下文
-     *
-     * @return 是否回写上下文
-     */
     public boolean isIncludeToolResultsInContext() {
         return includeToolResultsInContext;
     }

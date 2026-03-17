@@ -15,12 +15,19 @@ import java.util.Map;
  */
 public final class LlmStreamEvent {
 
+    /** 当前流式事件的唯一标识。 */
     private final String eventId;
+    /** 事件类型，决定当前增量应按文本、工具或结束事件解释。 */
     private final LlmStreamEventType type;
+    /** 文本增量片段，仅在文本流式输出时有值。 */
     private final String textDelta;
+    /** 工具调用增量片段，仅在工具调用流式输出时有值。 */
     private final ToolCallDelta toolCallDelta;
+    /** 截止当前事件的用量信息，通常在完成事件时最有参考价值。 */
     private final LlmUsage usage;
+    /** 标记当前事件是否代表一次流式调用已经完成。 */
     private final boolean completed;
+    /** 事件级扩展元数据，用于调试和底层兼容信息传递。 */
     private final Map<String, Object> metadata;
 
     /**
@@ -47,65 +54,30 @@ public final class LlmStreamEvent {
         return new Builder();
     }
 
-    /**
-     * 返回事件标识
-     *
-     * @return 事件标识
-     */
     public String getEventId() {
         return eventId;
     }
 
-    /**
-     * 返回事件类型
-     *
-     * @return 事件类型
-     */
     public LlmStreamEventType getType() {
         return type;
     }
 
-    /**
-     * 返回文本增量
-     *
-     * @return 文本增量
-     */
     public String getTextDelta() {
         return textDelta;
     }
 
-    /**
-     * 返回工具调用增量
-     *
-     * @return 工具调用增量
-     */
     public ToolCallDelta getToolCallDelta() {
         return toolCallDelta;
     }
 
-    /**
-     * 返回用量信息
-     *
-     * @return 用量信息
-     */
     public LlmUsage getUsage() {
         return usage;
     }
 
-    /**
-     * 返回是否完成
-     *
-     * @return 是否完成
-     */
     public boolean isCompleted() {
         return completed;
     }
 
-    /**
-     * 返回元数据
-     *
-     * @return 元数据
-     */
     public Map<String, Object> getMetadata() {
         return metadata;
     }

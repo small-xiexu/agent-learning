@@ -16,10 +16,15 @@ import java.util.Objects;
  */
 public final class ToolContext {
 
+    /** 当前工具调用所属的会话标识。 */
     private final String conversationId;
+    /** 发起本次工具调用的智能体标识。 */
     private final String agentId;
+    /** 当前调用轮次标识，可用于区分同一会话中的不同步骤。 */
     private final String turnId;
+    /** 当前会话的记忆视图，允许工具读取或补充上下文。 */
     private final MemorySession memorySession;
+    /** 工具上下文共享属性，用于传递额外运行时数据。 */
     private final Map<String, Object> attributes;
 
     /**
@@ -44,47 +49,22 @@ public final class ToolContext {
         return new Builder();
     }
 
-    /**
-     * 返回会话标识
-     *
-     * @return 会话标识
-     */
     public String getConversationId() {
         return conversationId;
     }
 
-    /**
-     * 返回智能体标识
-     *
-     * @return 智能体标识
-     */
     public String getAgentId() {
         return agentId;
     }
 
-    /**
-     * 返回轮次标识
-     *
-     * @return 轮次标识
-     */
     public String getTurnId() {
         return turnId;
     }
 
-    /**
-     * 返回会话内存
-     *
-     * @return 会话内存
-     */
     public MemorySession getMemorySession() {
         return memorySession;
     }
 
-    /**
-     * 返回上下文属性
-     *
-     * @return 上下文属性
-     */
     public Map<String, Object> getAttributes() {
         return attributes;
     }
