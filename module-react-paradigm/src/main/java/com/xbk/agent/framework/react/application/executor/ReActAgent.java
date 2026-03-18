@@ -101,16 +101,23 @@ public class ReActAgent {
          */
         while (step < maxSteps) {
             step++;
+            // 先把当前上下文发给模型，问它“下一步该直接回答，还是先去调工具”。
             LlmResponse response = helloAgentsLLM.chat(buildRequest(conversationId, history));
+            // 不管模型这轮是思考、要调工具还是已经给答案，都先把它说的话记进上下文。
             appendAssistantMessage(history, memorySession, conversationId, response);
 
             if (!response.getToolCalls().isEmpty()) {
+                // 走到这里说明模型没有急着给最终答案，而是明确要求先调用某个工具。
                 ToolCall toolCall = response.getToolCalls().getFirst();
+                // 真正执行工具，把模型给出的参数喂给对应工具实现。
                 ToolResult toolResult = executeTool(conversationId, memorySession, step, toolCall);
+                // 再把工具执行结果包装成“观察结果”写回上下文，供下一轮模型继续参考。
                 appendMessage(history, memorySession, createObservationMessage(conversationId, toolCall, toolResult));
+                // 这一轮只负责“调工具并记录结果”，然后立刻进入下一轮继续问模型。
                 continue;
             }
 
+            // 走到这里说明模型这轮没有再要调工具，那就尝试把它当成最终答案提取出来。
             String finalAnswer = extractFinalAnswer(response);
             if (finalAnswer != null && !finalAnswer.isEmpty()) {
                 lastHistory = List.copyOf(history);
