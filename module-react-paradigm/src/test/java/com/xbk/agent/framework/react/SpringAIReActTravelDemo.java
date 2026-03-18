@@ -91,17 +91,25 @@ public class SpringAIReActTravelDemo {
      */
     private static DemoRunResult runTravelDemo() throws Exception {
         ReactAgent callAgent = createTravelAssistantAgent(new ScriptedTravelChatModel());
+        // RunnableConfig 可以理解成“这一次图执行时的运行参数包”。
+        // 这里最重要的是 threadId，它相当于这次会话的唯一标识。
+        // 配了 MemorySaver 之后，Graph Runtime 会按这个 threadId 隔离状态，避免不同调用串线。
         RunnableConfig callConfig = RunnableConfig.builder()
                 .threadId("react-travel-call-thread")
                 .build();
 
+        // call() 只关心“最后的答案是什么”，因此直接返回最终的 AssistantMessage。
         AssistantMessage finalAnswer = callAgent.call(USER_QUERY, callConfig);
 
         ReactAgent invokeAgent = createTravelAssistantAgent(new ScriptedTravelChatModel());
+        // 这里故意换一个 threadId，让第二次执行拥有独立状态。
+        // 这样 call() 和 invoke() 的演示互不影响，更容易观察官方 Runtime 的行为。
         RunnableConfig invokeConfig = RunnableConfig.builder()
                 .threadId("react-travel-invoke-thread")
                 .build();
 
+        // invoke() 不只给最终答案，还会把整次图执行结束后的状态拿回来。
+        // 学习阶段更适合用它观察消息轨迹、工具调用结果以及状态里都保存了什么。
         Optional<OverAllState> state = invokeAgent.invoke(USER_QUERY, invokeConfig);
 
         return new DemoRunResult(finalAnswer, state);
@@ -122,8 +130,14 @@ public class SpringAIReActTravelDemo {
         return ReactAgent.builder()
                 .name("travel-react-agent")
                 .description("智能旅行助手")
+                // model(...) 指定“图里的模型节点到底调用哪个大模型”。
+                // 手写版是我们自己调 helloAgentsLLM.chat(...)，官方版则交给 Graph Runtime 调这里的模型。
                 .model(chatModel)
+                // methodTools(...) 会把普通 Java 方法自动注册成可调用工具。
+                // 模型一旦返回 tool call，Runtime 会自动找到对应方法执行，不需要我们手写 ToolRegistry 路由逻辑。
                 .methodTools(new TravelTools())
+                // systemPrompt(...) 就是给 Agent 的长期角色设定。
+                // 它会和用户问题、工具结果一起进入上下文，指导模型按照 ReAct 方式工作。
                 .systemPrompt("""
                         你是一名智能旅行助手。
                         你的工作方式必须遵循 ReAct：
@@ -136,6 +150,8 @@ public class SpringAIReActTravelDemo {
                         当你需要根据天气推荐景点时调用 recommendAttraction。
                         最终回答请使用简洁自然的中文。
                         """)
+                // saver(...) 负责保存这条执行线程上的状态。
+                // 这里用内存版 MemorySaver，方便 demo 在本地直接运行和观察，不需要外部存储。
                 .saver(new MemorySaver())
                 .build();
     }

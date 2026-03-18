@@ -49,12 +49,18 @@ class SpringAIReActTravelOpenAiDemo {
     @Test
     void shouldRunOfficialReactAgentAgainstRealOpenAiModel() throws Exception {
         try (ConfigurableApplicationContext context = createApplicationContext()) {
+            // 这里直接从 Spring 容器里拿 ChatModel，目的是复用 Spring Boot 配好的 OpenAI 模型配置。
+            // 这样 demo 不需要在代码里硬编码 API Key、模型名或 baseUrl。
             ChatModel chatModel = context.getBean(ChatModel.class);
             ReactAgent reactAgent = createTravelAssistantAgent(chatModel);
+            // 真实模型场景下同样需要 threadId。
+            // 它代表这一轮官方 ReAct 执行的会话线，状态保存和恢复都靠它区分。
             RunnableConfig runnableConfig = RunnableConfig.builder()
                     .threadId("official-react-openai-demo")
                     .build();
 
+            // 这里用 invoke() 而不是 call()，因为学习阶段更关心整条执行链路。
+            // 拿到完整状态后，我们可以确认模型是否真的触发了工具调用，以及工具结果有没有被写回图状态。
             Optional<OverAllState> state = reactAgent.invoke(USER_QUERY, runnableConfig);
             List<Message> messages = state.map(value -> value.value("messages", new ArrayList<Message>()))
                     .orElseGet(ArrayList::new);
@@ -78,7 +84,9 @@ class SpringAIReActTravelOpenAiDemo {
      */
     private ConfigurableApplicationContext createApplicationContext() {
         return new SpringApplicationBuilder(OpenAiReactDemoTestConfig.class)
+                // 只激活 demo 专用 profile，避免把真实 OpenAI 配置混入普通测试。
                 .profiles("openai-react-demo")
+                // 这是一个纯测试/命令式 demo，不需要启动 Web 容器。
                 .web(WebApplicationType.NONE)
                 .run();
     }
@@ -93,8 +101,14 @@ class SpringAIReActTravelOpenAiDemo {
         return ReactAgent.builder()
                 .name("travel-react-agent")
                 .description("智能旅行助手")
+                // 这里挂上的是真实 OpenAI ChatModel。
+                // 后续 Model Node 每轮该问模型什么、什么时候继续，全都由官方 Runtime 驱动。
                 .model(model)
+                // 和离线 demo 一样，methodTools(...) 会自动把 Java 方法暴露成工具能力。
+                // 这样官方版能自己完成“模型决定调工具 -> Runtime 执行工具 -> 结果写回状态”的闭环。
                 .methodTools(new TravelTools())
+                // systemPrompt 用来把“智能旅行助手”这套规则长期固定下来，
+                // 让真实模型优先查天气，再给景点推荐。
                 .systemPrompt("""
                         你是一名智能旅行助手。
                         回答必须遵循 ReAct 风格：
@@ -102,6 +116,8 @@ class SpringAIReActTravelOpenAiDemo {
                         2. 先查天气，再根据天气推荐景点。
                         3. 工具结果拿到后再给最终中文答案。
                         """)
+                // MemorySaver 是最轻量的状态保存实现，适合 demo 场景。
+                // 如果以后做长会话或恢复执行，再换成持久化存储即可。
                 .saver(new MemorySaver())
                 .build();
     }
