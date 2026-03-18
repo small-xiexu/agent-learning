@@ -90,7 +90,11 @@ export PATH="$JAVA_HOME/bin:$PATH"
 
 当你把手写版 `ReActAgent` 的主循环看明白之后，再去看底座协议。
 
-推荐顺序：
+推荐顺序分成两层，不要一上来就把“接口”和“实现”混在一起看。
+
+### 4.1 先看协议层
+
+这一层回答的是：这个框架内部到底约定了哪些核心对象，它们分别代表什么。
 
 1. `framework-core/src/main/java/com/xbk/agent/framework/core/llm/HelloAgentsLLM.java`
 2. `framework-core/src/main/java/com/xbk/agent/framework/core/llm/model/LlmRequest.java`
@@ -98,6 +102,29 @@ export PATH="$JAVA_HOME/bin:$PATH"
 4. `framework-core/src/main/java/com/xbk/agent/framework/core/llm/model/ToolCall.java`
 5. `framework-core/src/main/java/com/xbk/agent/framework/core/memory/Message.java`
 6. `framework-core/src/main/java/com/xbk/agent/framework/core/tool/ToolRegistry.java`
+
+注意：这一层很多文件本身是接口或协议对象，所以你会觉得“代码不多”。这是正常的，因为它们负责定义边界，不负责把流程真正跑起来。
+
+### 4.2 再看实现层
+
+这一层回答的是：前面那些协议在项目里到底是怎么落地的。
+
+1. `framework-core/src/main/java/com/xbk/agent/framework/core/llm/DefaultHelloAgentsLLM.java`
+2. `framework-core/src/main/java/com/xbk/agent/framework/core/tool/support/DefaultToolRegistry.java`
+3. `module-react-paradigm/src/main/java/com/xbk/agent/framework/react/application/executor/ReActAgent.java`
+
+这样看会顺很多：
+
+- `HelloAgentsLLM`
+  - 先看“统一模型入口长什么样”
+- `DefaultHelloAgentsLLM`
+  - 再看“这个入口在默认实现里怎么被调用”
+- `ToolRegistry`
+  - 先看“工具注册中心提供了什么能力”
+- `DefaultToolRegistry`
+  - 再看“工具最后是怎么被查找和执行的”
+- `ReActAgent`
+  - 最后回到手写 ReAct 主循环，把前面的协议和实现串起来
 
 这一阶段的目标不是立刻记住所有字段，而是搞懂 5 个核心角色：
 
