@@ -392,6 +392,7 @@ flowchart TD
 
 - `ReActAgent` 只认 `AgentLlmGateway`
 - `SpringAiLlmClient` 只需要实现 `LlmClient`
+- `SpringAiLlmClient` 及相关映射器现在位于 `framework-llm-springai`，`framework-core` 只保留统一协议
 - `DefaultAgentLlmGateway` 负责把二者接起来
 
 你也可以把它翻译成一句更口语的话：

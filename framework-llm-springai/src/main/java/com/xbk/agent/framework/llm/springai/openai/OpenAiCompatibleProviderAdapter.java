@@ -2,9 +2,9 @@ package com.xbk.agent.framework.llm.springai.openai;
 
 import com.xbk.agent.framework.core.llm.AgentLlmGateway;
 import com.xbk.agent.framework.core.llm.DefaultAgentLlmGateway;
-import com.xbk.agent.framework.core.llm.adapter.springai.SpringAiLlmClient;
 import com.xbk.agent.framework.llm.autoconfigure.LlmProperties;
 import com.xbk.agent.framework.llm.autoconfigure.ProviderAdapter;
+import com.xbk.agent.framework.llm.springai.adapter.SpringAiLlmClient;
 
 /**
  * OpenAI compatible provider adapter

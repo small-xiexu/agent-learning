@@ -1,4 +1,4 @@
-package com.xbk.agent.framework.core.llm.adapter.springai;
+package com.xbk.agent.framework.llm.springai.adapter;
 
 import com.xbk.agent.framework.core.llm.model.LlmRequest;
 import com.xbk.agent.framework.core.llm.model.StructuredLlmResponse;

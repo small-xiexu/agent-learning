@@ -75,9 +75,13 @@
 
 - `SpringAiLlmClient`
 - `SpringAiMessageMapper`
+- `SpringAiToolMapper`
 - `SpringAiOptionsMapper`
 - `SpringAiResponseMapper`
 - `SpringAiModelResolver`
+- `SpringAiStreamEventMapper`
+- `SpringAiStreamingLlmClient`
+- `SpringAiStructuredOutputLlmClient`
 - 基于 Spring AI 的具体 provider adapter
 
 ### 4.3 framework-llm-autoconfigure
