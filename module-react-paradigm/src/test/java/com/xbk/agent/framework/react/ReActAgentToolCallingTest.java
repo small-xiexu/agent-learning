@@ -2,7 +2,7 @@ package com.xbk.agent.framework.react;
 
 import com.xbk.agent.framework.core.common.enums.LlmCapability;
 import com.xbk.agent.framework.core.common.enums.MessageRole;
-import com.xbk.agent.framework.core.llm.HelloAgentsLLM;
+import com.xbk.agent.framework.core.llm.AgentLlmGateway;
 import com.xbk.agent.framework.core.llm.model.LlmRequest;
 import com.xbk.agent.framework.core.llm.model.LlmResponse;
 import com.xbk.agent.framework.core.llm.model.StructuredLlmResponse;
@@ -43,12 +43,12 @@ class ReActAgentToolCallingTest {
      */
     @Test
     void shouldEnableToolCallingWhenBuildingLlmRequest() {
-        RecordingHelloAgentsLLM helloAgentsLLM = new RecordingHelloAgentsLLM();
-        ReActAgent reactAgent = new ReActAgent(helloAgentsLLM, createToolRegistry(), 1);
+        RecordingAgentLlmGateway agentLlmGateway = new RecordingAgentLlmGateway();
+        ReActAgent reactAgent = new ReActAgent(agentLlmGateway, createToolRegistry(), 1);
 
         reactAgent.run("今天北京天气如何？");
 
-        LlmRequest captured = helloAgentsLLM.lastRequest.get();
+        LlmRequest captured = agentLlmGateway.lastRequest.get();
         assertNotNull(captured);
         assertTrue(captured.getToolCallingOptions().isEnabled());
         assertFalse(captured.getAvailableTools().isEmpty());
@@ -72,7 +72,7 @@ class ReActAgentToolCallingTest {
      *
      * @author xiexu
      */
-    private static final class RecordingHelloAgentsLLM implements HelloAgentsLLM {
+    private static final class RecordingAgentLlmGateway implements AgentLlmGateway {
 
         private final AtomicReference<LlmRequest> lastRequest = new AtomicReference<LlmRequest>();
 

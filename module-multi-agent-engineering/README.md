@@ -83,7 +83,7 @@
 
 - `Message`：提供统一消息语义
 - `Memory / MemorySession`：提供会话和阶段级上下文读取能力
-- `HelloAgentsLLM`：负责统一模型调用
+- `AgentLlmGateway`：负责统一模型调用
 
 建议在这个模块中进一步抽象：
 

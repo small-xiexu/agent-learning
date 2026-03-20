@@ -96,7 +96,7 @@ CAMEL 风格范式的关键思想是：
 Roleplay 模块依赖 `framework-core` 提供两个关键统一层：
 
 - `Message / Memory`：保存角色间交互历史
-- `HelloAgentsLLM`：统一模型调用，避免角色实现绑死底层模型 API
+- `AgentLlmGateway`：统一模型调用，避免角色实现绑死底层模型 API
 
 建议把“角色契约”抽象为显式对象，例如：
 

@@ -20,7 +20,7 @@ import java.util.Set;
  *
  * @author xiexu
  */
-public class DefaultHelloAgentsLLM implements HelloAgentsLLM {
+public class DefaultAgentLlmGateway implements AgentLlmGateway {
 
     private final LlmClient llmClient;
 
@@ -29,7 +29,7 @@ public class DefaultHelloAgentsLLM implements HelloAgentsLLM {
      *
      * @param llmClient 主 LLM 客户端
      */
-    public DefaultHelloAgentsLLM(LlmClient llmClient) {
+    public DefaultAgentLlmGateway(LlmClient llmClient) {
         if (llmClient == null) {
             throw new IllegalArgumentException("llmClient must not be null");
         }

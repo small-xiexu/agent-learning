@@ -2,7 +2,7 @@ package com.xbk.agent.framework.react;
 
 import com.xbk.agent.framework.core.common.enums.LlmCapability;
 import com.xbk.agent.framework.core.common.enums.MessageRole;
-import com.xbk.agent.framework.core.llm.HelloAgentsLLM;
+import com.xbk.agent.framework.core.llm.AgentLlmGateway;
 import com.xbk.agent.framework.core.llm.model.LlmRequest;
 import com.xbk.agent.framework.core.llm.model.LlmResponse;
 import com.xbk.agent.framework.core.llm.model.StructuredLlmResponse;
@@ -47,7 +47,7 @@ public class ReActTravelDemo {
     @Test
     public void shouldCompleteTravelAssistantReactLoop() {
         ToolRegistry toolRegistry = createToolRegistry();
-        ReActAgent reactAgent = new ReActAgent(new TravelDemoHelloAgentsLLM(), toolRegistry, 5);
+        ReActAgent reactAgent = new ReActAgent(new TravelDemoAgentLlmGateway(), toolRegistry, 5);
 
         String answer = reactAgent.run(USER_QUERY);
 
@@ -68,7 +68,7 @@ public class ReActTravelDemo {
     @Test
     public void shouldStopWhenMaxStepsReached() {
         ToolRegistry toolRegistry = createToolRegistry();
-        ReActAgent reactAgent = new ReActAgent(new AlwaysToolCallingHelloAgentsLLM(), toolRegistry, 2);
+        ReActAgent reactAgent = new ReActAgent(new AlwaysToolCallingAgentLlmGateway(), toolRegistry, 2);
 
         String answer = reactAgent.run(USER_QUERY);
 
@@ -83,7 +83,7 @@ public class ReActTravelDemo {
      */
     public static void main(String[] args) {
         ToolRegistry toolRegistry = createToolRegistry();
-        ReActAgent reactAgent = new ReActAgent(new TravelDemoHelloAgentsLLM(), toolRegistry, 5);
+        ReActAgent reactAgent = new ReActAgent(new TravelDemoAgentLlmGateway(), toolRegistry, 5);
         String answer = reactAgent.run(USER_QUERY);
 
         LOGGER.info("=== ReAct 智能旅行助手 ===");
@@ -112,7 +112,7 @@ public class ReActTravelDemo {
      *
      * @author xiexu
      */
-    private static final class TravelDemoHelloAgentsLLM implements HelloAgentsLLM {
+    private static final class TravelDemoAgentLlmGateway implements AgentLlmGateway {
 
         /**
          * 执行同步对话
@@ -273,7 +273,7 @@ public class ReActTravelDemo {
      *
      * @author xiexu
      */
-    private static final class AlwaysToolCallingHelloAgentsLLM implements HelloAgentsLLM {
+    private static final class AlwaysToolCallingAgentLlmGateway implements AgentLlmGateway {
 
         /**
          * 执行同步对话

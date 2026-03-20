@@ -24,13 +24,13 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * DefaultHelloAgentsLLM 测试
+ * DefaultAgentLlmGateway 测试
  *
  * 职责：验证统一门面对主 SPI 和可选能力 SPI 的委派行为
  *
  * @author xiexu
  */
-class DefaultHelloAgentsLLMTest {
+class DefaultAgentLlmGatewayTest {
 
     /**
      * 验证同步对话会委派给主 LLM 客户端
@@ -38,7 +38,7 @@ class DefaultHelloAgentsLLMTest {
     @Test
     void shouldDelegateSyncChatToLlmClient() {
         RecordingLlmClient client = new RecordingLlmClient();
-        DefaultHelloAgentsLLM llm = new DefaultHelloAgentsLLM(client);
+        DefaultAgentLlmGateway llm = new DefaultAgentLlmGateway(client);
         LlmRequest request = request();
 
         LlmResponse response = llm.chat(request);
@@ -53,7 +53,7 @@ class DefaultHelloAgentsLLMTest {
     @Test
     void shouldExposeDelegatedCapabilities() {
         RecordingLlmClient client = new RecordingLlmClient();
-        DefaultHelloAgentsLLM llm = new DefaultHelloAgentsLLM(client);
+        DefaultAgentLlmGateway llm = new DefaultAgentLlmGateway(client);
 
         Set<LlmCapability> capabilities = llm.capabilities();
 
@@ -65,7 +65,7 @@ class DefaultHelloAgentsLLMTest {
      */
     @Test
     void shouldThrowWhenStreamingCapabilityIsMissing() {
-        DefaultHelloAgentsLLM llm = new DefaultHelloAgentsLLM(new RecordingLlmClient());
+        DefaultAgentLlmGateway llm = new DefaultAgentLlmGateway(new RecordingLlmClient());
 
         assertThrows(UnsupportedCapabilityException.class, () -> llm.stream(request(), new NoOpStreamHandler()));
     }
@@ -75,7 +75,7 @@ class DefaultHelloAgentsLLMTest {
      */
     @Test
     void shouldThrowWhenStructuredCapabilityIsMissing() {
-        DefaultHelloAgentsLLM llm = new DefaultHelloAgentsLLM(new RecordingLlmClient());
+        DefaultAgentLlmGateway llm = new DefaultAgentLlmGateway(new RecordingLlmClient());
 
         assertThrows(UnsupportedCapabilityException.class, () -> llm.structuredChat(request(),
                 StructuredOutputSpec.<String>builder().targetType(String.class).schemaName("schema").build()));

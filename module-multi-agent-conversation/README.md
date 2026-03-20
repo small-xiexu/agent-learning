@@ -91,7 +91,7 @@
 本模块需要把对话协作建立在统一协议之上：
 
 - `Message / Memory`：保存多 Agent 共享的会话历史
-- `HelloAgentsLLM`：统一专家 Agent 的模型调用入口
+- `AgentLlmGateway`：统一专家 Agent 的模型调用入口
 - `ToolRegistry`：让专家不仅能聊天，还能调用能力
 
 推荐做法是把“交接事件”也建模为一种显式领域事件，而不是只作为内部回调。

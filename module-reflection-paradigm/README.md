@@ -88,7 +88,7 @@ Reflection 模块依赖 `framework-core` 的核心原因在于：
 反思并不是字符串拼接，而是结构化状态流转。
 
 - `Message / Memory`：保存每一轮草稿、评审意见、修订结果
-- `HelloAgentsLLM`：驱动生成者和评审者的统一调用
+- `AgentLlmGateway`：驱动生成者和评审者的统一调用
 - `ToolRegistry`：当评审者要求补证据、补计算、补检索时，允许继续调工具纠偏
 
 推荐实践是把“草稿”“评审意见”“修订版”“轮次计数”都作为显式状态，而不是隐藏在长 Prompt 中。

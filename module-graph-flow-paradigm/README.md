@@ -108,7 +108,7 @@ Spring AI Alibaba 还提供了 `FlowGraphBuilder`、`CompileConfig` 等配套能
 
 Graph Flow 模块仍然应站在 `framework-core` 的协议之上，而不是绕开它直接操作底层模型。
 
-- `HelloAgentsLLM`：让图中的模型节点统一调用入口
+- `AgentLlmGateway`：让图中的模型节点统一调用入口
 - `ToolRegistry`：让图中的工具节点统一执行入口
 - `Memory / Message`：让对话上下文和过程消息有统一语义
 

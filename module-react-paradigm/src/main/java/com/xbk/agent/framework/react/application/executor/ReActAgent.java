@@ -2,7 +2,7 @@ package com.xbk.agent.framework.react.application.executor;
 
 import com.xbk.agent.framework.core.common.enums.ToolChoiceMode;
 import com.xbk.agent.framework.core.common.enums.MessageRole;
-import com.xbk.agent.framework.core.llm.HelloAgentsLLM;
+import com.xbk.agent.framework.core.llm.AgentLlmGateway;
 import com.xbk.agent.framework.core.llm.model.LlmRequest;
 import com.xbk.agent.framework.core.llm.model.LlmResponse;
 import com.xbk.agent.framework.core.llm.model.ToolCall;
@@ -34,7 +34,7 @@ public class ReActAgent {
     private static final String AGENT_ID = "react-agent";
     private static final String FINAL_ANSWER_PREFIX = "Final Answer:";
 
-    private final HelloAgentsLLM helloAgentsLLM;
+    private final AgentLlmGateway agentLlmGateway;
     private final ToolRegistry toolRegistry;
     private final int maxSteps;
 
@@ -43,23 +43,23 @@ public class ReActAgent {
     /**
      * 创建使用默认最大步数的 ReActAgent
      *
-     * @param helloAgentsLLM 统一 LLM 门面
+     * @param agentLlmGateway 统一 LLM 网关
      * @param toolRegistry 工具注册中心
      */
-    public ReActAgent(HelloAgentsLLM helloAgentsLLM, ToolRegistry toolRegistry) {
-        this(helloAgentsLLM, toolRegistry, DEFAULT_MAX_STEPS);
+    public ReActAgent(AgentLlmGateway agentLlmGateway, ToolRegistry toolRegistry) {
+        this(agentLlmGateway, toolRegistry, DEFAULT_MAX_STEPS);
     }
 
     /**
      * 创建 ReActAgent
      *
-     * @param helloAgentsLLM 统一 LLM 门面
+     * @param agentLlmGateway 统一 LLM 网关
      * @param toolRegistry 工具注册中心
      * @param maxSteps 最大执行步数
      */
-    public ReActAgent(HelloAgentsLLM helloAgentsLLM, ToolRegistry toolRegistry, int maxSteps) {
-        if (helloAgentsLLM == null) {
-            throw new IllegalArgumentException("helloAgentsLLM must not be null");
+    public ReActAgent(AgentLlmGateway agentLlmGateway, ToolRegistry toolRegistry, int maxSteps) {
+        if (agentLlmGateway == null) {
+            throw new IllegalArgumentException("agentLlmGateway must not be null");
         }
         if (toolRegistry == null) {
             throw new IllegalArgumentException("toolRegistry must not be null");
@@ -67,7 +67,7 @@ public class ReActAgent {
         if (maxSteps <= 0) {
             throw new IllegalArgumentException("maxSteps must be greater than zero");
         }
-        this.helloAgentsLLM = helloAgentsLLM;
+        this.agentLlmGateway = agentLlmGateway;
         this.toolRegistry = toolRegistry;
         this.maxSteps = maxSteps;
     }
@@ -102,7 +102,7 @@ public class ReActAgent {
         while (step < maxSteps) {
             step++;
             // 先把当前上下文发给模型，问它“下一步该直接回答，还是先去调工具”。
-            LlmResponse response = helloAgentsLLM.chat(buildRequest(conversationId, history));
+            LlmResponse response = agentLlmGateway.chat(buildRequest(conversationId, history));
             // 不管模型这轮是思考、要调工具还是已经给答案，都先把它说的话记进上下文。
             appendAssistantMessage(history, memorySession, conversationId, response);
 

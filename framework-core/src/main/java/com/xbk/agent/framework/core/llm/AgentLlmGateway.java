@@ -11,12 +11,13 @@ import java.util.Set;
 
 /**
  * 统一 LLM 门面
- *
- * 职责：向上层屏蔽底层模型与适配器差异
+ * 1、可以先把它理解成“统一模型入口”
+ * 2、上层代码不应该直接关心底层到底接的是 OpenAI、Spring AI，还是别的实现
+ * 3、上层只需要知道：我把 `LlmRequest` 交给它，它给我 `LlmResponse`
  *
  * @author xiexu
  */
-public interface HelloAgentsLLM {
+public interface AgentLlmGateway {
 
     /**
      * 执行同步对话
@@ -38,8 +39,8 @@ public interface HelloAgentsLLM {
      * 执行结构化输出对话
      *
      * @param request LLM 请求
-     * @param spec 结构化定义
-     * @param <T> 输出类型
+     * @param spec    结构化定义
+     * @param <T>     输出类型
      * @return 结构化响应
      */
     <T> StructuredLlmResponse<T> structuredChat(LlmRequest request, StructuredOutputSpec<T> spec);

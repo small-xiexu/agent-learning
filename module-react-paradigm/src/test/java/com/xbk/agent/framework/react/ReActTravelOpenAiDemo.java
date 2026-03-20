@@ -1,8 +1,8 @@
 package com.xbk.agent.framework.react;
 
 import com.xbk.agent.framework.core.common.enums.MessageRole;
-import com.xbk.agent.framework.core.llm.DefaultHelloAgentsLLM;
-import com.xbk.agent.framework.core.llm.HelloAgentsLLM;
+import com.xbk.agent.framework.core.llm.AgentLlmGateway;
+import com.xbk.agent.framework.core.llm.DefaultAgentLlmGateway;
 import com.xbk.agent.framework.core.llm.adapter.springai.SpringAiLlmClient;
 import com.xbk.agent.framework.core.memory.Message;
 import com.xbk.agent.framework.core.tool.Tool;
@@ -32,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * 手写版 ReActAgent 真实 OpenAI 对照 Demo
  *
- * 职责：让框架自己的 HelloAgentsLLM 与 ToolRegistry 通过真实 OpenAI ChatModel 跑通旅行助手闭环
+ * 职责：让框架自己的 AgentLlmGateway 与 ToolRegistry 通过真实 OpenAI ChatModel 跑通旅行助手闭环
  *
  * @author xiexu
  */
@@ -50,8 +50,8 @@ class ReActTravelOpenAiDemo {
     void shouldRunHandwrittenReactAgainstRealOpenAiModel() {
         try (ConfigurableApplicationContext context = createApplicationContext()) {
             ChatModel chatModel = context.getBean(ChatModel.class);
-            HelloAgentsLLM helloAgentsLLM = new DefaultHelloAgentsLLM(new SpringAiLlmClient(chatModel));
-            ReActAgent reactAgent = new ReActAgent(helloAgentsLLM, createToolRegistry(), 5);
+            AgentLlmGateway agentLlmGateway = new DefaultAgentLlmGateway(new SpringAiLlmClient(chatModel));
+            ReActAgent reactAgent = new ReActAgent(agentLlmGateway, createToolRegistry(), 5);
 
             String answer = reactAgent.run(USER_QUERY);
             List<Message> history = reactAgent.latestHistory();

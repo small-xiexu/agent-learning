@@ -32,7 +32,7 @@
 
 - 只依赖我们自己的 `framework-core`
 - 不引入任何 `org.springframework.ai.*`
-- 用统一的 `Message`、`HelloAgentsLLM`、`ToolRegistry` 组成 ReAct 运行时
+- 用统一的 `Message`、`AgentLlmGateway`、`ToolRegistry` 组成 ReAct 运行时
 - 用显式 `while (step < maxSteps)` 作为安全阀
 
 它更适合作为框架内核，因为领域协议主权完全掌握在我们自己手里。
@@ -47,7 +47,7 @@
 
 - 直接使用 `ReactAgent`
 - 直接使用 `ChatModel`、`@Tool`、`MemorySaver`
-- 直接利用 Graph Runtime 在 Model Node 与 Tool Node 间自动流转
+- 直接让 Graph Runtime 帮我们自动推进“问模型 -> 调工具 -> 再问模型”的闭环
 - 用 `call()` 取最终答案，用 `invoke()` 取完整状态
 
 它更适合作为教学 Demo、能力验证样例和官方 API 对照基线。
@@ -74,7 +74,7 @@
 
 1. 自己维护 `history`
 2. 自己把 `history + tools` 组装成 `LlmRequest`
-3. 自己调用 `HelloAgentsLLM.chat(...)`
+3. 自己调用 `AgentLlmGateway.chat(...)`
 4. 自己判断响应是“工具调用”还是“最终答案”
 5. 自己从 `ToolRegistry` 找工具并执行
 6. 自己把工具结果包装成 `Observation`
@@ -102,6 +102,43 @@
 
 这说明官方版把运行时控制流下沉到了 Graph Runtime。
 
+如果你对“Graph Runtime 自动流转”这句话还是有点抽象，可以先把它理解成：
+
+- 不是我们自己写 `while`
+- 而是框架替我们决定“下一步该继续问模型，还是该去执行工具”
+
+更直白地说：
+
+- `Model Node`
+  - 负责问模型：是直接回答，还是先调工具
+- `Tool Node`
+  - 负责执行工具，并把结果写回状态
+- Graph Runtime
+  - 负责在这两个节点之间自动切换，直到模型给出最终答案
+
+流程大概就是这样：
+
+```mermaid
+flowchart TD
+    U[用户问题]
+    M[Model Node<br/>问模型]
+    T[Tool Node<br/>执行工具]
+    S[状态回写<br/>Tool Response / Messages]
+    A[最终答案]
+
+    U --> M
+    M -->|模型直接回答| A
+    M -->|模型返回 ToolCall| T
+    T --> S
+    S --> M
+```
+
+所以“在 Model Node 与 Tool Node 间自动流转”真正想表达的是：
+
+- 模型一旦要求调工具，框架就自动切到工具节点执行
+- 工具执行完后，框架再自动把结果带回模型节点继续推理
+- 这一来一回不需要我们自己手写控制流
+
 ## 5. 核心流程逐段对照
 
 ## 5.1 构造阶段
@@ -110,7 +147,7 @@
 
 构造器在 `ReActAgent` 中直接注入：
 
-- `HelloAgentsLLM`
+- `AgentLlmGateway`
 - `ToolRegistry`
 - `maxSteps`
 

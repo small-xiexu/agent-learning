@@ -40,8 +40,8 @@ public class SpringAiResponseMapper {
      */
     public LlmResponse toLlmResponse(LlmRequest request, ChatResponse response) {
         Generation generation = response.getResult();
-        AssistantMessage assistantMessage = generation == null ? null : generation.getOutput();
-        String text = assistantMessage == null ? null : assistantMessage.getText();
+        AssistantMessage assistantMessage = generation.getOutput();
+        String text = assistantMessage.getText();
         List<ToolCall> toolCalls = toToolCalls(assistantMessage);
         Message outputMessage = Message.builder()
                 .messageId(UUID.randomUUID().toString())

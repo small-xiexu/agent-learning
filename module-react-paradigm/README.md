@@ -95,7 +95,7 @@ Spring AI Alibaba 官方提供了基于 ReAct 理念的 `ReactAgent`。
 
 本模块不应直接把业务逻辑写死在 `ReactAgent` Builder 中，而应建立在 `framework-core` 的稳定协议之上：
 
-- `HelloAgentsLLM`：统一模型入口，隔离底层 `ChatModel`
+- `AgentLlmGateway`：统一模型入口，隔离底层 `ChatModel`
 - `Message / Memory`：统一消息与会话上下文
 - `Tool / ToolRegistry`：统一工具定义、发现与执行
 

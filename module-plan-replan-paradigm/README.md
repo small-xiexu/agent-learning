@@ -109,7 +109,7 @@ Plan-Execute-Replan 的思想正是为了解决这些问题。
 
 这个模块高度依赖 `framework-core` 的三个能力：
 
-- `HelloAgentsLLM`：负责规划阶段和重规划阶段的结构化输出
+- `AgentLlmGateway`：负责规划阶段和重规划阶段的结构化输出
 - `Memory / Message`：负责保留执行轨迹与上下文
 - `ToolRegistry`：负责子任务执行的外部能力调度
 
