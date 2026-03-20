@@ -5,8 +5,8 @@ import com.alibaba.cloud.ai.graph.RunnableConfig;
 import com.alibaba.cloud.ai.graph.agent.ReactAgent;
 import com.alibaba.cloud.ai.graph.checkpoint.savers.MemorySaver;
 import com.xbk.agent.framework.react.config.OpenAiReactDemoTestConfig;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.springframework.ai.chat.messages.AbstractMessage;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -34,7 +34,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * @author xiexu
  */
-@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 @EnabledIfSystemProperty(named = "demo.react.openai.enabled", matches = "true")
 class SpringAIReActTravelOpenAiDemo {
 
@@ -48,6 +47,7 @@ class SpringAIReActTravelOpenAiDemo {
      */
     @Test
     void shouldRunOfficialReactAgentAgainstRealOpenAiModel() throws Exception {
+        Assumptions.assumeTrue(hasApiKey(), "需要配置 LLM_API_KEY 或 OPENAI_API_KEY");
         try (ConfigurableApplicationContext context = createApplicationContext()) {
             // 这里直接从 Spring 容器里拿 ChatModel，目的是复用 Spring Boot 配好的 OpenAI 模型配置。
             // 这样 demo 不需要在代码里硬编码 API Key、模型名或 baseUrl。
@@ -154,6 +154,14 @@ class SpringAIReActTravelOpenAiDemo {
             return message.getMessageType() + " -> " + abstractMessage.getText();
         }
         return message.getMessageType() + " -> " + message;
+    }
+
+    private boolean hasApiKey() {
+        return hasText(System.getenv("LLM_API_KEY")) || hasText(System.getenv("OPENAI_API_KEY"));
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     /**

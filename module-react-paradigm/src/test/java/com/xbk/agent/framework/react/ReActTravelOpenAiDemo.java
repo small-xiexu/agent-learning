@@ -2,8 +2,6 @@ package com.xbk.agent.framework.react;
 
 import com.xbk.agent.framework.core.common.enums.MessageRole;
 import com.xbk.agent.framework.core.llm.AgentLlmGateway;
-import com.xbk.agent.framework.core.llm.DefaultAgentLlmGateway;
-import com.xbk.agent.framework.core.llm.adapter.springai.SpringAiLlmClient;
 import com.xbk.agent.framework.core.memory.Message;
 import com.xbk.agent.framework.core.tool.Tool;
 import com.xbk.agent.framework.core.tool.ToolContext;
@@ -14,10 +12,9 @@ import com.xbk.agent.framework.core.tool.ToolResult;
 import com.xbk.agent.framework.core.tool.support.DefaultToolRegistry;
 import com.xbk.agent.framework.react.application.executor.ReActAgent;
 import com.xbk.agent.framework.react.config.OpenAiReactDemoTestConfig;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
-import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -36,7 +33,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * @author xiexu
  */
-@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 @EnabledIfSystemProperty(named = "demo.react.openai.enabled", matches = "true")
 class ReActTravelOpenAiDemo {
 
@@ -48,9 +44,9 @@ class ReActTravelOpenAiDemo {
      */
     @Test
     void shouldRunHandwrittenReactAgainstRealOpenAiModel() {
+        Assumptions.assumeTrue(hasApiKey(), "需要配置 LLM_API_KEY 或 OPENAI_API_KEY");
         try (ConfigurableApplicationContext context = createApplicationContext()) {
-            ChatModel chatModel = context.getBean(ChatModel.class);
-            AgentLlmGateway agentLlmGateway = new DefaultAgentLlmGateway(new SpringAiLlmClient(chatModel));
+            AgentLlmGateway agentLlmGateway = context.getBean(AgentLlmGateway.class);
             ReActAgent reactAgent = new ReActAgent(agentLlmGateway, createToolRegistry(), 5);
 
             String answer = reactAgent.run(USER_QUERY);
@@ -99,6 +95,14 @@ class ReActTravelOpenAiDemo {
             LOGGER.info(message.getRole() + " -> " + message.getContent());
         }
         LOGGER.info("Final Answer -> " + answer);
+    }
+
+    private boolean hasApiKey() {
+        return hasText(System.getenv("LLM_API_KEY")) || hasText(System.getenv("OPENAI_API_KEY"));
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     /**

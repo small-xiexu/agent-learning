@@ -14,6 +14,8 @@
 
     <modules>
         <module>framework-core</module>
+        <module>framework-llm-autoconfigure</module>
+        <module>framework-llm-springai</module>
         <module>module-react-paradigm</module>
         <module>module-plan-replan-paradigm</module>
         <module>module-reflection-paradigm</module>
@@ -86,6 +88,16 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>framework-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>framework-llm-autoconfigure</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>framework-llm-springai</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

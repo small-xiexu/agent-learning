@@ -522,15 +522,48 @@ flowchart TD
 
 默认配置项包括：
 
-- `spring.ai.openai.api-key`
-- `spring.ai.openai.chat.options.model=gpt-4o`
+- `llm.provider=openai-compatible`
+- `llm.base-url`
+- `llm.api-key`
+- `llm.model=gpt-4o`
+- `llm.chat-completions-path=/v1/chat/completions`
 - `demo.react.openai.enabled`
+
+也就是说，上层 demo 已经不再直接依赖 `spring.ai.openai.*`。
+
+当前真实模型接入链路是：
+
+- `llm.*` 统一配置
+- `OpenAiCompatibleProviderAdapter`
+- Spring AI `ChatModel`
+- `AgentLlmGateway`
+
+如果你接的是 OpenAI compatible 服务，最关键的填写规则是：
+
+- `llm.base-url`
+  - 填服务根地址，例如 `https://apis.itedus.cn`
+  - 不是完整的 `/v1/chat/completions`
+- `llm.chat-completions-path`
+  - 默认是 `/v1/chat/completions`
+  - 只有服务端路径不同时才需要改
+- `llm.api-key`
+  - 填模型服务要求的 key
+- `llm.model`
+  - 填服务端实际接受的模型名
 
 ### 7.2 推荐的本地配置方式
 
 推荐方式有两种。
 
 #### 方式一：环境变量
+
+```bash
+export LLM_BASE_URL='https://api.openai.com'
+export LLM_API_KEY='你的key'
+export LLM_MODEL='gpt-4o'
+```
+
+为了兼容之前的 demo，当前配置也仍然兼容：
 
 ```bash
 export OPENAI_API_KEY='你的key'
@@ -548,11 +581,24 @@ export OPENAI_API_KEY='你的key'
 
 这个本地文件已经被 `.gitignore` 忽略，不会误提交到仓库。
 
+本地 yml 示例的核心结构现在是：
+
+```yaml
+llm:
+  provider: openai-compatible
+  base-url: https://api.openai.com
+  api-key: your-openai-api-key
+  model: gpt-4o
+  chat-completions-path: /v1/chat/completions
+```
+
 ### 7.3 真实 Demo 运行命令
 
 ```bash
 export JAVA_HOME=/Users/sxie/Library/Java/JavaVirtualMachines/azul-21.0.10/Contents/Home
 export PATH="$JAVA_HOME/bin:$PATH"
+export LLM_BASE_URL='https://api.openai.com'
+export LLM_API_KEY='你的key'
 
 /Users/sxie/maven/apache-maven-3.6.3/bin/mvn -q \
   -pl module-react-paradigm -am \

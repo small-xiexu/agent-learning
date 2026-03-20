@@ -11,8 +11,8 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>module-react-paradigm</artifactId>
-    <name>spring-ai-agent-framework :: module-react-paradigm</name>
+    <artifactId>framework-llm-springai</artifactId>
+    <name>spring-ai-agent-framework :: framework-llm-springai</name>
 
     <dependencies>
         <dependency>
@@ -24,16 +24,24 @@
             <artifactId>framework-llm-autoconfigure</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.xbk</groupId>
-            <artifactId>framework-llm-springai</artifactId>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.alibaba.cloud.ai</groupId>
-            <artifactId>spring-ai-alibaba-agent-framework</artifactId>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-openai</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.retry</groupId>
+            <artifactId>spring-retry</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-observation</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

@@ -1,12 +1,13 @@
 spring:
   config:
     import: optional:application-openai-react-demo-local.yml
-  ai:
-    openai:
-      api-key: ${OPENAI_API_KEY:}
-      chat:
-        options:
-          model: gpt-4o
+
+llm:
+  provider: ${LLM_PROVIDER:openai-compatible}
+  base-url: ${LLM_BASE_URL:https://api.openai.com}
+  api-key: ${LLM_API_KEY:${OPENAI_API_KEY:}}
+  model: ${LLM_MODEL:gpt-4o}
+  chat-completions-path: ${LLM_CHAT_COMPLETIONS_PATH:/v1/chat/completions}
 
 demo:
   react:
