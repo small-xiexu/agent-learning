@@ -1,0 +1,11 @@
+llm:
+  provider: openai-compatible
+  base-url: https://api.openai.com
+  api-key: your-openai-api-key
+  model: gpt-4o
+  chat-completions-path: /v1/chat/completions
+
+demo:
+  plan-solve:
+    openai:
+      enabled: true

@@ -78,7 +78,7 @@ Expected: 迁移前基线通过。
 
 **Files:**
 - Modify: `docs/superpowers/specs/2026-03-20-llm-provider-abstraction-design.md`
-- Modify: `docs/react-learning-path.md`
+- Modify: `docs/ReAct学习路径.md`
 
 - [ ] **Step 1: 运行迁移后的模块测试**
 

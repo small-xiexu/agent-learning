@@ -39,7 +39,7 @@
 - `module-react-paradigm/src/test/resources/application-openai-react-demo-local.yml.example`
 - `module-react-paradigm/src/test/java/com/xbk/agent/framework/react/ReActTravelOpenAiDemo.java`
 - `module-react-paradigm/src/test/java/com/xbk/agent/framework/react/config/OpenAiReactDemoTestConfigTest.java`
-- `docs/react-learning-path.md`
+- `docs/ReAct学习路径.md`
 
 ### Reuse Without Moving in Phase 1
 
@@ -273,7 +273,7 @@ Expected: `ReActTravelOpenAiDemo` 可以通过统一 `AgentLlmGateway` 跑通，
 ### Task 7: 更新学习文档，解释统一接入路径
 
 **Files:**
-- Modify: `docs/react-learning-path.md`
+- Modify: `docs/ReAct学习路径.md`
 
 - [ ] **Step 1: 增加“统一 `llm.*` 配置”说明**
 
@@ -284,7 +284,7 @@ Expected: `ReActTravelOpenAiDemo` 可以通过统一 `AgentLlmGateway` 跑通，
 
 - [ ] **Step 2: 运行文档相关回归检查**
 
-Run: `rg -n "spring.ai.openai|llm\\." docs/react-learning-path.md module-react-paradigm/src/test/resources/application-openai-react-demo.yml`
+Run: `rg -n "spring.ai.openai|llm\\." docs/ReAct学习路径.md module-react-paradigm/src/test/resources/application-openai-react-demo.yml`
 
 Expected: 文档和配置用语一致，不再互相矛盾。
 

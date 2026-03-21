@@ -490,7 +490,7 @@ flowchart TD
 
 当你已经看过两套代码后，再读下面这份文档最合适：
 
-- `docs/react-agent-handwritten-vs-official.md`
+- `docs/ReAct手写版与官方版对照.md`
 
 这份文档适合你在以下场景使用：
 
@@ -667,7 +667,7 @@ export LLM_API_KEY='你的key'
 ### 第 3 天
 
 - 看离线官方版 `SpringAIReActTravelDemo`
-- 对照 `docs/react-agent-handwritten-vs-official.md`
+- 对照 `docs/ReAct手写版与官方版对照.md`
 
 ### 第 4 天
 
