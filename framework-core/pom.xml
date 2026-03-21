@@ -13,6 +13,7 @@
 
     <artifactId>framework-core</artifactId>
     <name>spring-ai-agent-framework :: framework-core</name>
+    <description>核心协议模块，提供统一模型调用、工具、记忆与运行时抽象</description>
 
     <dependencies>
         <dependency>

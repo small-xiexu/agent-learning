@@ -11,9 +11,10 @@ import java.util.Set;
 
 /**
  * 统一 LLM 门面
- * 1、可以先把它理解成“统一模型入口”
- * 2、上层代码不应该直接关心底层到底接的是 OpenAI、Spring AI，还是别的实现
- * 3、上层只需要知道：我把 `LlmRequest` 交给它，它给我 `LlmResponse`
+ *
+ * 职责：作为上层访问模型的统一入口；
+ * 上层只需要把 {@link LlmRequest} 交给它并接收 {@link LlmResponse}，
+ * 不需要直接关心底层到底接的是 Spring AI、OpenAI compatible 还是其它实现
  *
  * @author xiexu
  */

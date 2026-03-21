@@ -13,6 +13,7 @@
 
     <artifactId>module-multi-agent-roleplay</artifactId>
     <name>spring-ai-agent-framework :: module-multi-agent-roleplay</name>
+    <description>多智能体角色扮演模块，提供多角色协作与场景模拟示例</description>
 
     <dependencies>
         <dependency>

@@ -13,6 +13,7 @@
 
     <artifactId>module-react-paradigm</artifactId>
     <name>spring-ai-agent-framework :: module-react-paradigm</name>
+    <description>ReAct 范式模块，提供推理、行动与工具调用协同示例</description>
 
     <dependencies>
         <dependency>

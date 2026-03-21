@@ -13,6 +13,7 @@
 
     <artifactId>framework-llm-springai</artifactId>
     <name>spring-ai-agent-framework :: framework-llm-springai</name>
+    <description>Spring AI 接入模块，提供基于 Spring AI 的模型适配与 Provider 实现</description>
 
     <dependencies>
         <dependency>

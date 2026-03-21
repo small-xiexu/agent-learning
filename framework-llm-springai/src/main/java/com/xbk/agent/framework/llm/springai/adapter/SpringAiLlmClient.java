@@ -4,17 +4,22 @@ import com.xbk.agent.framework.core.common.enums.LlmCapability;
 import com.xbk.agent.framework.core.llm.model.LlmRequest;
 import com.xbk.agent.framework.core.llm.model.LlmResponse;
 import com.xbk.agent.framework.core.llm.spi.LlmClient;
+import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Set;
 
 /**
  * Spring AI 同步 LLM 客户端
  *
- * 职责：基于 ChatModel 执行同步对话
+ * 职责：在运行阶段接收框架统一的 {@link LlmRequest}，
+ * 把请求转换为 Spring AI 的 {@link Prompt}，调用底层 {@link ChatModel}，
+ * 再把返回结果转换回框架统一的 {@link LlmResponse}
  *
  * @author xiexu
  */
@@ -26,7 +31,7 @@ public class SpringAiLlmClient implements LlmClient {
     private final SpringAiResponseMapper responseMapper;
 
     /**
-     * 创建同步客户端
+     * 基于 ChatModel 创建同步客户端
      *
      * @param chatModel ChatModel
      */
@@ -36,7 +41,7 @@ public class SpringAiLlmClient implements LlmClient {
     }
 
     /**
-     * 创建同步客户端
+     * 基于完整依赖创建同步客户端
      *
      * @param modelResolver 模型解析器
      * @param messageMapper 消息映射器
@@ -59,11 +64,12 @@ public class SpringAiLlmClient implements LlmClient {
      */
     @Override
     public LlmResponse chat(LlmRequest request) {
-        Prompt prompt = new Prompt(messageMapper.toSpringAiMessages(request.getMessages()),
-                optionsMapper.toChatOptions(
-                        request.getModelOptions(),
-                        request.getAvailableTools(),
-                        request.getToolCallingOptions()));
+        List<Message> messages = messageMapper.toSpringAiMessages(request.getMessages());
+        ChatOptions chatOptions = optionsMapper.toChatOptions(
+                request.getModelOptions(),
+                request.getAvailableTools(),
+                request.getToolCallingOptions());
+        Prompt prompt = new Prompt(messages, chatOptions);
         ChatResponse response = modelResolver.resolveChatModel().call(prompt);
         return responseMapper.toLlmResponse(request, response);
     }

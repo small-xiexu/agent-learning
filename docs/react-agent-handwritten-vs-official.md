@@ -9,6 +9,14 @@
 
 这两套实现不是互相替代的关系，而是典型的“框架内核实现”和“官方能力对照样例”的关系。
 
+这里需要特别说明：
+
+- 本文主要对照的是离线脚本版官方 Demo：`SpringAIReActTravelDemo.java`
+- 不直接讨论真实模型版：`SpringAIReActTravelOpenAiDemo.java`
+- 真实模型接入方式已经切到统一 `llm.*` 配置，并通过 `framework-llm-springai` 完成 Spring AI 适配
+
+也就是说，这份文档回答的是“官方 ReAct Runtime 替我们接管了哪些控制流”，而不是“真实模型配置应该怎么接”。
+
 这份文档的目标只有一个：帮助我们从源码层面看清楚，Spring AI Alibaba 官方 `ReactAgent` 到底帮我们自动处理了哪些原本需要手写的 ReAct 运行时逻辑。
 
 ## 2. 一句话结论
@@ -42,6 +50,7 @@
 类路径：
 
 - `module-react-paradigm/src/test/java/com/xbk/agent/framework/react/SpringAIReActTravelDemo.java`
+- 真实模型对应样例：`module-react-paradigm/src/test/java/com/xbk/agent/framework/react/SpringAIReActTravelOpenAiDemo.java`
 
 核心定位：
 
@@ -51,6 +60,12 @@
 - 用 `call()` 取最终答案，用 `invoke()` 取完整状态
 
 它更适合作为教学 Demo、能力验证样例和官方 API 对照基线。
+
+如果你的目标是学习真实模型接入，不应该只看这一份离线对照文档，还要同时看：
+
+- `module-react-paradigm/src/test/java/com/xbk/agent/framework/react/ReActTravelOpenAiDemo.java`
+- `module-react-paradigm/src/test/java/com/xbk/agent/framework/react/SpringAIReActTravelOpenAiDemo.java`
+- `module-react-paradigm/src/test/resources/application-openai-react-demo.yml`
 
 ## 4. 同一个旅行助手场景，两个实现分别怎么思考
 

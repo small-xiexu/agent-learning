@@ -3,22 +3,28 @@ package com.xbk.agent.framework.llm.autoconfigure;
 import java.util.List;
 
 /**
- * ProviderAdapterRegistry
+ * ProviderAdapter 解析器
  *
- * 职责：在已注册 adapter 中解析唯一匹配项
+ * 职责：在启动阶段从已注册的 adapter 中，
+ * 按 provider 标识解析出唯一匹配项，供自动装配层继续创建统一网关
  *
  * @author xiexu
  */
-public class ProviderAdapterRegistry {
+public class ProviderAdapterResolver {
 
     private final List<ProviderAdapter> adapters;
 
-    public ProviderAdapterRegistry(List<ProviderAdapter> adapters) {
+    /**
+     * 创建解析器
+     *
+     * @param adapters 已注册 adapter
+     */
+    public ProviderAdapterResolver(List<ProviderAdapter> adapters) {
         this.adapters = adapters == null ? List.of() : List.copyOf(adapters);
     }
 
     /**
-     * 返回指定 provider 的唯一 adapter。
+     * 返回指定 provider 的唯一 adapter
      *
      * @param providerId provider 标识
      * @return 唯一匹配 adapter

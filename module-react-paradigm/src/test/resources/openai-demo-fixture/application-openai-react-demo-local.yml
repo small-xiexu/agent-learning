@@ -1,0 +1,7 @@
+llm:
+  api-key: fixture-file-key
+
+demo:
+  react:
+    openai:
+      enabled: true

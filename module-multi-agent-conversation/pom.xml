@@ -13,6 +13,7 @@
 
     <artifactId>module-multi-agent-conversation</artifactId>
     <name>spring-ai-agent-framework :: module-multi-agent-conversation</name>
+    <description>多智能体对话模块，提供多智能体对话协同示例</description>
 
     <dependencies>
         <dependency>

@@ -135,18 +135,19 @@ ReAct 最怕“一个万能工具做所有事情”。
   - `ReActTravelOpenAiDemo`
   - `SpringAIReActTravelOpenAiDemo`
 
-真实对照版的设计目标是让手写版 `ReActAgent` 和官方 `ReactAgent` 共用同一个 `ChatModel` 与同一个 `OPENAI_API_KEY`，从而进行真正的控制变量对照学习。
+真实对照版的设计目标是让手写版 `ReActAgent` 和官方 `ReactAgent` 共用同一个 `ChatModel` 与同一份本地 OpenAI 配置，从而进行真正的控制变量对照学习。
 
 运行真实 Demo 前需要准备：
 
-- 环境变量：`OPENAI_API_KEY`
-- 显式开关：`-Ddemo.react.openai.enabled=true`
+- 本地配置文件：`src/test/resources/application-openai-react-demo-local.yml`
+- 在本地配置文件中设置：`demo.react.openai.enabled=true`
 
-如果你更习惯 Spring Boot 本地配置文件，也可以：
+操作方式：
 
 1. 复制 `src/test/resources/application-openai-react-demo-local.yml.example`
 2. 重命名为 `src/test/resources/application-openai-react-demo-local.yml`
-3. 把真实 `api-key` 写进这个本地文件
+3. 在这个本地文件里填写真实 `base-url`、`api-key`、`model`
+4. 把 `demo.react.openai.enabled` 设为 `true`
 
 这个本地文件已经被 `.gitignore` 忽略，不会被误提交到仓库。
 

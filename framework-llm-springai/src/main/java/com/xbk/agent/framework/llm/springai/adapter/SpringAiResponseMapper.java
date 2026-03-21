@@ -29,6 +29,12 @@ import java.util.UUID;
  */
 public class SpringAiResponseMapper {
 
+    static final String ASSISTANT_TOOL_CALLS_METADATA_KEY = "assistantToolCalls";
+    private static final String TOOL_CALL_ID_KEY = "id";
+    private static final String TOOL_CALL_TYPE_KEY = "type";
+    private static final String TOOL_CALL_NAME_KEY = "name";
+    private static final String TOOL_CALL_ARGUMENTS_KEY = "arguments";
+
     private final JsonParser jsonParser = JsonParserFactory.getJsonParser();
 
     /**
@@ -42,12 +48,14 @@ public class SpringAiResponseMapper {
         Generation generation = response.getResult();
         AssistantMessage assistantMessage = generation.getOutput();
         String text = assistantMessage.getText();
+        String normalizedText = text == null ? "" : text;
         List<ToolCall> toolCalls = toToolCalls(assistantMessage);
         Message outputMessage = Message.builder()
                 .messageId(UUID.randomUUID().toString())
                 .conversationId(request.getConversationId())
                 .role(MessageRole.ASSISTANT)
-                .content(text)
+                .content(normalizedText)
+                .metadata(toAssistantMetadata(assistantMessage))
                 .build();
         return LlmResponse.builder()
                 .requestId(request.getRequestId())
@@ -79,6 +87,28 @@ public class SpringAiResponseMapper {
                     .build());
         }
         return List.copyOf(toolCalls);
+    }
+
+    /**
+     * 将 assistant 的工具调用信息写入消息元数据，便于下一轮请求还原 tool_calls。
+     *
+     * @param assistantMessage 助手消息
+     * @return 元数据映射
+     */
+    private Map<String, Object> toAssistantMetadata(AssistantMessage assistantMessage) {
+        if (assistantMessage == null || !assistantMessage.hasToolCalls()) {
+            return Collections.emptyMap();
+        }
+        List<Map<String, Object>> toolCalls = new ArrayList<Map<String, Object>>();
+        for (AssistantMessage.ToolCall toolCall : assistantMessage.getToolCalls()) {
+            Map<String, Object> toolCallMetadata = new java.util.LinkedHashMap<String, Object>();
+            toolCallMetadata.put(TOOL_CALL_ID_KEY, toolCall.id());
+            toolCallMetadata.put(TOOL_CALL_TYPE_KEY, toolCall.type());
+            toolCallMetadata.put(TOOL_CALL_NAME_KEY, toolCall.name());
+            toolCallMetadata.put(TOOL_CALL_ARGUMENTS_KEY, toolCall.arguments());
+            toolCalls.add(toolCallMetadata);
+        }
+        return Collections.<String, Object>singletonMap(ASSISTANT_TOOL_CALLS_METADATA_KEY, List.copyOf(toolCalls));
     }
 
     /**

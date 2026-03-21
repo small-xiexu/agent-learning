@@ -107,12 +107,16 @@ public class ReActAgent {
             appendAssistantMessage(history, memorySession, conversationId, response);
 
             if (!response.getToolCalls().isEmpty()) {
-                // 走到这里说明模型没有急着给最终答案，而是明确要求先调用某个工具。
-                ToolCall toolCall = response.getToolCalls().getFirst();
-                // 真正执行工具，把模型给出的参数喂给对应工具实现。
-                ToolResult toolResult = executeTool(conversationId, memorySession, step, toolCall);
-                // 再把工具执行结果包装成“观察结果”写回上下文，供下一轮模型继续参考。
-                appendMessage(history, memorySession, createObservationMessage(conversationId, toolCall, toolResult));
+                // 走到这里说明模型没有急着给最终答案，而是明确要求先调用工具。
+                // 一些真实模型会在同一轮里返回多个 tool calls，因此这里必须全部执行完，
+                // 否则下一轮请求会因为缺少某些 tool_call_id 的响应而被 provider 拒绝。
+                for (ToolCall toolCall : response.getToolCalls()) {
+                    // 真正执行工具，把模型给出的参数喂给对应工具实现。
+                    ToolResult toolResult = executeTool(conversationId, memorySession, step, toolCall);
+                    // 再把工具执行结果包装成“观察结果”写回上下文，供下一轮模型继续参考。
+                    Message message = createObservationMessage(conversationId, toolCall, toolResult);
+                    appendMessage(history, memorySession, message);
+                }
                 // 这一轮只负责“调工具并记录结果”，然后立刻进入下一轮继续问模型。
                 continue;
             }

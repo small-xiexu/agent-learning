@@ -9,13 +9,13 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * ProviderAdapterRegistry 测试
+ * ProviderAdapterResolver 测试
  *
- * 职责：验证注册表能按 provider 标识解析唯一 adapter，并对异常情况给出明确失败
+ * 职责：验证解析器能按 provider 标识解析唯一 adapter，并对异常情况给出明确失败
  *
  * @author xiexu
  */
-class ProviderAdapterRegistryTest {
+class ProviderAdapterResolverTest {
 
     /**
      * 验证存在唯一匹配时返回对应 adapter。
@@ -23,11 +23,11 @@ class ProviderAdapterRegistryTest {
     @Test
     void shouldReturnMatchingAdapterWhenExactlyOneAdapterSupportsProvider() {
         TestProviderAdapter openAiAdapter = new TestProviderAdapter("openai-compatible");
-        ProviderAdapterRegistry registry = new ProviderAdapterRegistry(List.of(
+        ProviderAdapterResolver resolver = new ProviderAdapterResolver(List.of(
                 openAiAdapter,
                 new TestProviderAdapter("dashscope")));
 
-        ProviderAdapter adapter = registry.getRequiredAdapter("openai-compatible");
+        ProviderAdapter adapter = resolver.getRequiredAdapter("openai-compatible");
 
         assertSame(openAiAdapter, adapter);
     }
@@ -37,9 +37,9 @@ class ProviderAdapterRegistryTest {
      */
     @Test
     void shouldThrowWhenNoAdapterMatchesProvider() {
-        ProviderAdapterRegistry registry = new ProviderAdapterRegistry(List.of(new TestProviderAdapter("dashscope")));
+        ProviderAdapterResolver resolver = new ProviderAdapterResolver(List.of(new TestProviderAdapter("dashscope")));
 
-        assertThrows(IllegalStateException.class, () -> registry.getRequiredAdapter("openai-compatible"));
+        assertThrows(IllegalStateException.class, () -> resolver.getRequiredAdapter("openai-compatible"));
     }
 
     /**
@@ -47,11 +47,11 @@ class ProviderAdapterRegistryTest {
      */
     @Test
     void shouldThrowWhenMultipleAdaptersMatchProvider() {
-        ProviderAdapterRegistry registry = new ProviderAdapterRegistry(List.of(
+        ProviderAdapterResolver resolver = new ProviderAdapterResolver(List.of(
                 new TestProviderAdapter("openai-compatible"),
                 new TestProviderAdapter("openai-compatible")));
 
-        assertThrows(IllegalStateException.class, () -> registry.getRequiredAdapter("openai-compatible"));
+        assertThrows(IllegalStateException.class, () -> resolver.getRequiredAdapter("openai-compatible"));
     }
 
     /**

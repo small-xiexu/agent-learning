@@ -64,6 +64,35 @@ class SpringAiMessageMapperTest {
     }
 
     /**
+     * 验证带 tool_calls 元数据的助手消息会还原为 Spring AI 工具调用消息。
+     */
+    @Test
+    void shouldMapAssistantMessageWithToolCallsMetadataToSpringAiAssistantMessage() {
+        SpringAiMessageMapper mapper = new SpringAiMessageMapper();
+        Message message = Message.builder()
+                .messageId("assistant-msg-1")
+                .conversationId("conv-1")
+                .role(MessageRole.ASSISTANT)
+                .content("")
+                .metadata(java.util.Map.<String, Object>of(
+                        SpringAiResponseMapper.ASSISTANT_TOOL_CALLS_METADATA_KEY,
+                        java.util.List.of(java.util.Map.of(
+                                "id", "call-1",
+                                "type", "function",
+                                "name", "WeatherTool",
+                                "arguments", "{\"city\":\"北京\"}"))))
+                .build();
+
+        org.springframework.ai.chat.messages.Message mapped = mapper.toSpringAiMessage(message);
+
+        AssistantMessage assistantMessage = assertInstanceOf(AssistantMessage.class, mapped);
+        assertEquals("", assistantMessage.getText());
+        assertEquals(1, assistantMessage.getToolCalls().size());
+        assertEquals("call-1", assistantMessage.getToolCalls().getFirst().id());
+        assertEquals("WeatherTool", assistantMessage.getToolCalls().getFirst().name());
+    }
+
+    /**
      * 验证暂不支持的角色会快速失败
      */
     @Test

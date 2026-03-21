@@ -13,6 +13,7 @@
 
     <artifactId>module-multi-agent-supervisor</artifactId>
     <name>spring-ai-agent-framework :: module-multi-agent-supervisor</name>
+    <description>多智能体监督模块，提供 Supervisor 协调与任务分发示例</description>
 
     <dependencies>
         <dependency>

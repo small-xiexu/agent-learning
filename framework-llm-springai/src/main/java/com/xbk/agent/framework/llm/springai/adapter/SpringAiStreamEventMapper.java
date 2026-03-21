@@ -2,7 +2,9 @@ package com.xbk.agent.framework.llm.springai.adapter;
 
 import com.xbk.agent.framework.core.common.enums.LlmStreamEventType;
 import com.xbk.agent.framework.core.llm.model.LlmStreamEvent;
+import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.model.Generation;
 
 import java.util.UUID;
 
@@ -22,9 +24,9 @@ public class SpringAiStreamEventMapper {
      * @return 流式事件
      */
     public LlmStreamEvent toEvent(ChatResponse response) {
-        String text = response.getResult() == null || response.getResult().getOutput() == null
-                ? null
-                : response.getResult().getOutput().getText();
+        Generation generation = response.getResult();
+        AssistantMessage outputMessage = generation == null ? null : generation.getOutput();
+        String text = outputMessage == null ? null : outputMessage.getText();
         return LlmStreamEvent.builder()
                 .eventId(UUID.randomUUID().toString())
                 .type(LlmStreamEventType.COMPLETE)

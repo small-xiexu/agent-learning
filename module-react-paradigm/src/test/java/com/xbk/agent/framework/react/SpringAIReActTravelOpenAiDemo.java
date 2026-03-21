@@ -4,10 +4,10 @@ import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.RunnableConfig;
 import com.alibaba.cloud.ai.graph.agent.ReactAgent;
 import com.alibaba.cloud.ai.graph.checkpoint.savers.MemorySaver;
+import com.xbk.agent.framework.react.config.OpenAiReactDemoPropertySupport;
 import com.xbk.agent.framework.react.config.OpenAiReactDemoTestConfig;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.springframework.ai.chat.messages.AbstractMessage;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -34,11 +35,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * @author xiexu
  */
-@EnabledIfSystemProperty(named = "demo.react.openai.enabled", matches = "true")
 class SpringAIReActTravelOpenAiDemo {
 
     private static final Logger LOGGER = Logger.getLogger(SpringAIReActTravelOpenAiDemo.class.getName());
     private static final String USER_QUERY = "今天北京天气如何？根据天气推荐一个合适的旅游景点。";
+
+    /**
+     * 验证实时执行日志与消息回放日志使用不同标题。
+     */
+    @Test
+    void shouldUseSeparatedRealtimeAndReplayLogHeaders() {
+        assertEquals("=== 官方 ReactAgent + OpenAI(gpt-4o) 实时执行日志 ===", realtimeExecutionHeader());
+        assertEquals("USER(实时输入) -> " + USER_QUERY, realtimeUserInputLog(USER_QUERY));
+        assertEquals("=== 官方 ReactAgent + OpenAI(gpt-4o) 执行完成后的消息回放 ===", replayConversationHeader());
+    }
 
     /**
      * 验证官方 ReactAgent 可以通过真实 OpenAI 模型触发工具调用并返回最终结果。
@@ -47,7 +57,10 @@ class SpringAIReActTravelOpenAiDemo {
      */
     @Test
     void shouldRunOfficialReactAgentAgainstRealOpenAiModel() throws Exception {
-        Assumptions.assumeTrue(hasApiKey(), "需要配置 LLM_API_KEY 或 OPENAI_API_KEY");
+        Assumptions.assumeTrue(OpenAiReactDemoPropertySupport.isDemoEnabled(),
+                "需要在本地配置文件中开启 demo.react.openai.enabled=true");
+        Assumptions.assumeTrue(OpenAiReactDemoPropertySupport.hasConfiguredApiKey(),
+                "需要在本地配置文件中配置真实 llm.api-key");
         try (ConfigurableApplicationContext context = createApplicationContext()) {
             // 这里直接从 Spring 容器里拿 ChatModel，目的是复用 Spring Boot 配好的 OpenAI 模型配置。
             // 这样 demo 不需要在代码里硬编码 API Key、模型名或 baseUrl。
@@ -58,6 +71,9 @@ class SpringAIReActTravelOpenAiDemo {
             RunnableConfig runnableConfig = RunnableConfig.builder()
                     .threadId("official-react-openai-demo")
                     .build();
+
+            LOGGER.info(realtimeExecutionHeader());
+            LOGGER.info(realtimeUserInputLog(USER_QUERY));
 
             // 这里用 invoke() 而不是 call()，因为学习阶段更关心整条执行链路。
             // 拿到完整状态后，我们可以确认模型是否真的触发了工具调用，以及工具结果有没有被写回图状态。
@@ -128,10 +144,38 @@ class SpringAIReActTravelOpenAiDemo {
      * @param messages 消息列表
      */
     private void logConversation(List<Message> messages) {
-        LOGGER.info("=== 官方 ReactAgent + OpenAI(gpt-4o) ===");
+        LOGGER.info(replayConversationHeader());
         for (Message message : messages) {
             LOGGER.info(describeMessage(message));
         }
+    }
+
+    /**
+     * 返回实时执行日志标题。
+     *
+     * @return 实时执行日志标题
+     */
+    private static String realtimeExecutionHeader() {
+        return "=== 官方 ReactAgent + OpenAI(gpt-4o) 实时执行日志 ===";
+    }
+
+    /**
+     * 返回实时输入日志。
+     *
+     * @param userQuery 用户问题
+     * @return 实时输入日志
+     */
+    private static String realtimeUserInputLog(String userQuery) {
+        return "USER(实时输入) -> " + userQuery;
+    }
+
+    /**
+     * 返回执行完成后的消息回放标题。
+     *
+     * @return 回放日志标题
+     */
+    private static String replayConversationHeader() {
+        return "=== 官方 ReactAgent + OpenAI(gpt-4o) 执行完成后的消息回放 ===";
     }
 
     /**
@@ -154,14 +198,6 @@ class SpringAIReActTravelOpenAiDemo {
             return message.getMessageType() + " -> " + abstractMessage.getText();
         }
         return message.getMessageType() + " -> " + message;
-    }
-
-    private boolean hasApiKey() {
-        return hasText(System.getenv("LLM_API_KEY")) || hasText(System.getenv("OPENAI_API_KEY"));
-    }
-
-    private boolean hasText(String value) {
-        return value != null && !value.isBlank();
     }
 
     /**

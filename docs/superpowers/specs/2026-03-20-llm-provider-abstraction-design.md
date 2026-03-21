@@ -258,7 +258,7 @@ curl https://example.com/v1/chat/completions \
 - 是否支持某个 `provider-id`
 - 如何根据 `LlmProperties` 构建统一 `LlmClient` 或 `AgentLlmGateway`
 
-### 6.5 `ProviderAdapterRegistry`
+### 6.5 `ProviderAdapterResolver`
 
 职责：
 
@@ -271,7 +271,7 @@ curl https://example.com/v1/chat/completions \
 
 职责：
 
-- 基于 `LlmProperties` 和 `ProviderAdapterRegistry` 自动装配统一网关。
+- 基于 `LlmProperties` 和 `ProviderAdapterResolver` 自动装配统一网关。
 - 作为业务模块的默认入口。
 
 ### 6.7 `OpenAiCompatibleProviderAdapter`
@@ -299,7 +299,7 @@ curl https://example.com/v1/chat/completions \
 
 1. 启动阶段读取 `llm.*` 配置。
 2. 自动装配层收集所有 `ProviderAdapter` 实现。
-3. `ProviderAdapterRegistry` 根据 `llm.provider` 选择具体 adapter。
+3. `ProviderAdapterResolver` 根据 `llm.provider` 选择具体 adapter。
 4. adapter 根据统一配置构建底层 `LlmClient`。
 5. `DefaultAgentLlmGateway` 对外暴露统一调用入口。
 6. 业务模块和 Agent Runtime 仅依赖 `AgentLlmGateway`。
@@ -321,7 +321,7 @@ curl https://example.com/v1/chat/completions \
 
 - 引入 `llm.*` 统一配置。
 - 明确 Spring AI 是第一版统一接入底座。
-- 新增 `LlmProperties`、`ProviderAdapter`、`ProviderAdapterRegistry`。
+- 新增 `LlmProperties`、`ProviderAdapter`、`ProviderAdapterResolver`。
 - 新增统一自动装配入口。
 - 优先支持 `openai-compatible`。
 - 让 `module-react-paradigm` 之类的真实模型 demo 摆脱 `spring.ai.openai.*` 暴露。
@@ -387,7 +387,7 @@ curl https://example.com/v1/chat/completions \
 
 - 新增统一 `llm.*` 配置模型。
 - 新增 provider 能力配置对象。
-- 新增 `ProviderAdapter` 与 `ProviderAdapterRegistry`。
+- 新增 `ProviderAdapter` 与 `ProviderAdapterResolver`。
 - 新增 `OpenAiCompatibleProviderAdapter`。
 - 新增统一自动装配入口。
 - 改造真实模型 demo 使用统一网关入口。

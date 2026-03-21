@@ -13,6 +13,7 @@
 
     <artifactId>module-reflection-paradigm</artifactId>
     <name>spring-ai-agent-framework :: module-reflection-paradigm</name>
+    <description>Reflection 范式模块，提供反思迭代与自我校正示例</description>
 
     <dependencies>
         <dependency>

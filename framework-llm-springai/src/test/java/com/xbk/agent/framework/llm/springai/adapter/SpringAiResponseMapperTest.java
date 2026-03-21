@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * SpringAiResponseMapper 测试
@@ -57,6 +58,31 @@ class SpringAiResponseMapperTest {
         assertEquals(5, mapped.getUsage().getInputTokens());
         assertEquals(7, mapped.getUsage().getOutputTokens());
         assertEquals(12, mapped.getUsage().getTotalTokens());
+    }
+
+    /**
+     * 验证工具调用响应在 assistant 文本为空时，会把输出消息内容规范为空字符串。
+     */
+    @Test
+    void shouldNormalizeNullAssistantTextWhenToolCallResponseContainsNoText() {
+        SpringAiResponseMapper mapper = new SpringAiResponseMapper();
+        LlmRequest request = request();
+        AssistantMessage assistantMessage = AssistantMessage.builder()
+                .content(null)
+                .toolCalls(List.of(new AssistantMessage.ToolCall("call-1", "function", "WeatherTool",
+                        "{\"city\":\"北京\"}")))
+                .build();
+        ChatResponse response = ChatResponse.builder()
+                .generations(List.of(new Generation(assistantMessage)))
+                .build();
+
+        LlmResponse mapped = mapper.toLlmResponse(request, response);
+
+        assertEquals(LlmFinishReason.TOOL_CALL, mapped.getFinishReason());
+        assertEquals("", mapped.getOutputMessage().getContent());
+        assertEquals("WeatherTool", mapped.getToolCalls().getFirst().getToolName());
+        assertTrue(mapped.getOutputMessage().getMetadata()
+                .containsKey(SpringAiResponseMapper.ASSISTANT_TOOL_CALLS_METADATA_KEY));
     }
 
     /**

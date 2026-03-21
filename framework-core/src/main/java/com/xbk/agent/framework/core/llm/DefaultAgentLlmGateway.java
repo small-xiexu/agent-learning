@@ -16,7 +16,9 @@ import java.util.Set;
 /**
  * 默认 LLM 门面实现
  *
- * 职责：将统一门面调用委派给底层主 SPI 与可选能力 SPI
+ * 职责：作为 {@link AgentLlmGateway} 的默认门面实现，
+ * 把统一的 `chat / stream / structuredChat` 调用委派给底层 {@link LlmClient}
+ * 及其可选扩展能力，而不是自己直接发起模型请求
  *
  * @author xiexu
  */
@@ -25,7 +27,7 @@ public class DefaultAgentLlmGateway implements AgentLlmGateway {
     private final LlmClient llmClient;
 
     /**
-     * 创建门面实现
+     * 创建默认门面实现
      *
      * @param llmClient 主 LLM 客户端
      */

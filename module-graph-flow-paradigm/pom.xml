@@ -13,6 +13,7 @@
 
     <artifactId>module-graph-flow-paradigm</artifactId>
     <name>spring-ai-agent-framework :: module-graph-flow-paradigm</name>
+    <description>Graph Flow 范式模块，提供图式流程编排与节点协作示例</description>
 
     <dependencies>
         <dependency>

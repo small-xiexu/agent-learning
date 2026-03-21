@@ -458,6 +458,8 @@ flowchart TD
 
 - `module-react-paradigm/src/test/java/com/xbk/agent/framework/react/SpringAIReActTravelDemo.java`
 
+这里看的是官方离线对照版，不是真实模型接入版。
+
 这份 Demo 的学习重点不是“工具怎么写”，而是：
 
 - 为什么官方版不需要自己写 `while`
@@ -536,6 +538,7 @@ flowchart TD
 
 - `llm.*` 统一配置
 - `OpenAiCompatibleProviderAdapter`
+- `framework-llm-springai` 中的 Spring AI 适配实现
 - Spring AI `ChatModel`
 - `AgentLlmGateway`
 
@@ -564,6 +567,26 @@ export LLM_API_KEY='你的key'
 export LLM_MODEL='gpt-4o'
 ```
 
+如果你接的是 OpenAI compatible 网关，例如：
+
+- `https://apis.itedus.cn/v1/chat/completions`
+
+那建议这样配：
+
+```bash
+export LLM_PROVIDER='openai-compatible'
+export LLM_BASE_URL='https://apis.itedus.cn'
+export LLM_API_KEY='你的_api_key'
+export LLM_MODEL='gpt-4o'
+export LLM_CHAT_COMPLETIONS_PATH='/v1/chat/completions'
+export DEMO_REACT_OPENAI_ENABLED='true'
+```
+
+这里要注意：
+
+- `LLM_BASE_URL` 只填根地址，不要写成完整 `https://apis.itedus.cn/v1/chat/completions`
+- `LLM_CHAT_COMPLETIONS_PATH` 默认就是 `/v1/chat/completions`，只有服务端路径不同才需要改
+
 为了兼容之前的 demo，当前配置也仍然兼容：
 
 ```bash
@@ -591,6 +614,22 @@ llm:
   api-key: your-openai-api-key
   model: gpt-4o
   chat-completions-path: /v1/chat/completions
+```
+
+如果你用的是 OpenAI compatible 网关，本地文件可以直接写成：
+
+```yaml
+llm:
+  provider: openai-compatible
+  base-url: https://apis.itedus.cn
+  api-key: 你的_api_key
+  model: gpt-4o
+  chat-completions-path: /v1/chat/completions
+
+demo:
+  react:
+    openai:
+      enabled: true
 ```
 
 ### 7.3 真实 Demo 运行命令
@@ -627,13 +666,14 @@ export LLM_API_KEY='你的key'
 
 ### 第 3 天
 
-- 看 `SpringAIReActTravelDemo`
+- 看离线官方版 `SpringAIReActTravelDemo`
 - 对照 `docs/react-agent-handwritten-vs-official.md`
 
 ### 第 4 天
 
 - 配真实 OpenAI Key
-- 跑两套真实 Demo
+- 跑 `ReActTravelOpenAiDemo`
+- 跑 `SpringAIReActTravelOpenAiDemo`
 - 观察真实模型在工具调用上的行为差异
 
 ## 9. 一句话总结

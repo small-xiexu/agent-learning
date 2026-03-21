@@ -13,6 +13,7 @@
 
     <artifactId>module-plan-replan-paradigm</artifactId>
     <name>spring-ai-agent-framework :: module-plan-replan-paradigm</name>
+    <description>Plan-Replan 范式模块，提供计划生成、重规划与任务执行示例</description>
 
     <dependencies>
         <dependency>

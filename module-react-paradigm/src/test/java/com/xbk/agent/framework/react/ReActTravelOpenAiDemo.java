@@ -11,10 +11,10 @@ import com.xbk.agent.framework.core.tool.ToolRequest;
 import com.xbk.agent.framework.core.tool.ToolResult;
 import com.xbk.agent.framework.core.tool.support.DefaultToolRegistry;
 import com.xbk.agent.framework.react.application.executor.ReActAgent;
+import com.xbk.agent.framework.react.config.OpenAiReactDemoPropertySupport;
 import com.xbk.agent.framework.react.config.OpenAiReactDemoTestConfig;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -33,7 +33,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * @author xiexu
  */
-@EnabledIfSystemProperty(named = "demo.react.openai.enabled", matches = "true")
 class ReActTravelOpenAiDemo {
 
     private static final Logger LOGGER = Logger.getLogger(ReActTravelOpenAiDemo.class.getName());
@@ -44,7 +43,10 @@ class ReActTravelOpenAiDemo {
      */
     @Test
     void shouldRunHandwrittenReactAgainstRealOpenAiModel() {
-        Assumptions.assumeTrue(hasApiKey(), "需要配置 LLM_API_KEY 或 OPENAI_API_KEY");
+        Assumptions.assumeTrue(OpenAiReactDemoPropertySupport.isDemoEnabled(),
+                "需要在本地配置文件中开启 demo.react.openai.enabled=true");
+        Assumptions.assumeTrue(OpenAiReactDemoPropertySupport.hasConfiguredApiKey(),
+                "需要在本地配置文件中配置真实 llm.api-key");
         try (ConfigurableApplicationContext context = createApplicationContext()) {
             AgentLlmGateway agentLlmGateway = context.getBean(AgentLlmGateway.class);
             ReActAgent reactAgent = new ReActAgent(agentLlmGateway, createToolRegistry(), 5);
@@ -61,6 +63,12 @@ class ReActTravelOpenAiDemo {
 
     /**
      * 创建真实 OpenAI Demo 所需的 Spring 上下文。
+     *
+     * 这里不直接用 {@code @SpringBootTest}，而是在测试方法里按需启动一个最小容器，
+     * 这样可以更直观地控制：
+     * 1. 只加载本次 Demo 需要的自动装配
+     * 2. 显式启用 {@code openai-react-demo} profile，读取对应的本地模型配置
+     * 3. 关闭 Web 环境，避免为了一个命令式测试额外启动 Web 服务器
      *
      * @return Spring 上下文
      */
@@ -95,14 +103,6 @@ class ReActTravelOpenAiDemo {
             LOGGER.info(message.getRole() + " -> " + message.getContent());
         }
         LOGGER.info("Final Answer -> " + answer);
-    }
-
-    private boolean hasApiKey() {
-        return hasText(System.getenv("LLM_API_KEY")) || hasText(System.getenv("OPENAI_API_KEY"));
-    }
-
-    private boolean hasText(String value) {
-        return value != null && !value.isBlank();
     }
 
     /**

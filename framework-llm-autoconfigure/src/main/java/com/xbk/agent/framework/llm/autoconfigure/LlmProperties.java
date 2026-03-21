@@ -9,7 +9,9 @@ import java.util.Map;
 /**
  * 统一 LLM 配置
  *
- * 职责：承载统一的 llm.* 配置
+ * 职责：承载上层统一使用的 `llm.*` 配置；
+ * 这些配置会在启动阶段先绑定到当前对象，
+ * 再交给自动装配层和具体 {@link ProviderAdapter} 使用
  *
  * @author xiexu
  */

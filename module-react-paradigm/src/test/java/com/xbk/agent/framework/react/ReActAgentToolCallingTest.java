@@ -7,6 +7,7 @@ import com.xbk.agent.framework.core.llm.model.LlmRequest;
 import com.xbk.agent.framework.core.llm.model.LlmResponse;
 import com.xbk.agent.framework.core.llm.model.StructuredLlmResponse;
 import com.xbk.agent.framework.core.llm.model.StructuredOutputSpec;
+import com.xbk.agent.framework.core.llm.model.ToolCall;
 import com.xbk.agent.framework.core.llm.spi.LlmStreamHandler;
 import com.xbk.agent.framework.core.memory.Message;
 import com.xbk.agent.framework.core.tool.Tool;
@@ -21,10 +22,13 @@ import org.junit.jupiter.api.Test;
 
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -55,6 +59,30 @@ class ReActAgentToolCallingTest {
     }
 
     /**
+     * 验证当模型一轮返回多个 tool calls 时，Agent 会把它们全部执行并回写到下一轮上下文。
+     */
+    @Test
+    void shouldExecuteAllToolCallsReturnedInSingleRound() {
+        MultiToolCallingAgentLlmGateway agentLlmGateway = new MultiToolCallingAgentLlmGateway();
+        ReActAgent reactAgent = new ReActAgent(agentLlmGateway, createMultiToolRegistry(), 2);
+
+        String answer = reactAgent.run("先查北京天气，再推荐景点。");
+
+        assertEquals("北京天气晴朗，推荐去颐和园。", answer);
+        LlmRequest secondRequest = agentLlmGateway.secondRequest.get();
+        assertNotNull(secondRequest);
+        long toolMessageCount = secondRequest.getMessages().stream()
+                .filter(message -> message.getRole() == MessageRole.TOOL)
+                .count();
+        assertEquals(2, toolMessageCount);
+        assertTrue(secondRequest.getMessages().stream()
+                .anyMatch(message -> "call-weather".equals(message.getToolCallId())));
+        assertTrue(secondRequest.getMessages().stream()
+                .anyMatch(message -> "call-attraction".equals(message.getToolCallId())));
+        assertEquals(5, reactAgent.latestHistory().size());
+    }
+
+    /**
      * 创建测试工具注册中心。
      *
      * @return 工具注册中心
@@ -62,6 +90,18 @@ class ReActAgentToolCallingTest {
     private ToolRegistry createToolRegistry() {
         DefaultToolRegistry toolRegistry = new DefaultToolRegistry();
         toolRegistry.register(new WeatherTool());
+        return toolRegistry;
+    }
+
+    /**
+     * 创建双工具测试注册中心。
+     *
+     * @return 工具注册中心
+     */
+    private ToolRegistry createMultiToolRegistry() {
+        DefaultToolRegistry toolRegistry = new DefaultToolRegistry();
+        toolRegistry.register(new WeatherTool());
+        toolRegistry.register(new AttractionTool());
         return toolRegistry;
     }
 
@@ -135,6 +175,76 @@ class ReActAgentToolCallingTest {
     }
 
     /**
+     * 一轮返回两个 tool calls 的假 LLM。
+     *
+     * 职责：验证 ReActAgent 能否把同一轮里的多个工具请求全部执行完
+     *
+     * @author xiexu
+     */
+    private static final class MultiToolCallingAgentLlmGateway implements AgentLlmGateway {
+
+        private final AtomicInteger round = new AtomicInteger();
+        private final AtomicReference<LlmRequest> secondRequest = new AtomicReference<LlmRequest>();
+
+        @Override
+        public LlmResponse chat(LlmRequest request) {
+            if (round.incrementAndGet() == 1) {
+                Message outputMessage = Message.builder()
+                        .messageId(UUID.randomUUID().toString())
+                        .conversationId(request.getConversationId())
+                        .role(MessageRole.ASSISTANT)
+                        .content("Thought: 我需要并行拿到天气和景点信息。")
+                        .build();
+                return LlmResponse.builder()
+                        .requestId(request.getRequestId())
+                        .responseId(UUID.randomUUID().toString())
+                        .outputMessage(outputMessage)
+                        .rawText(outputMessage.getContent())
+                        .toolCalls(List.of(
+                                ToolCall.builder()
+                                        .toolCallId("call-weather")
+                                        .toolName("WeatherTool")
+                                        .arguments(Map.of("city", "北京"))
+                                        .build(),
+                                ToolCall.builder()
+                                        .toolCallId("call-attraction")
+                                        .toolName("AttractionTool")
+                                        .arguments(Map.of("city", "北京"))
+                                        .build()))
+                        .build();
+            }
+            secondRequest.set(request);
+            Message outputMessage = Message.builder()
+                    .messageId(UUID.randomUUID().toString())
+                    .conversationId(request.getConversationId())
+                    .role(MessageRole.ASSISTANT)
+                    .content("Final Answer: 北京天气晴朗，推荐去颐和园。")
+                    .build();
+            return LlmResponse.builder()
+                    .requestId(request.getRequestId())
+                    .responseId(UUID.randomUUID().toString())
+                    .outputMessage(outputMessage)
+                    .rawText(outputMessage.getContent())
+                    .build();
+        }
+
+        @Override
+        public void stream(LlmRequest request, LlmStreamHandler handler) {
+            throw new UnsupportedOperationException("multi-tool llm does not support streaming");
+        }
+
+        @Override
+        public <T> StructuredLlmResponse<T> structuredChat(LlmRequest request, StructuredOutputSpec<T> spec) {
+            throw new UnsupportedOperationException("multi-tool llm does not support structured output");
+        }
+
+        @Override
+        public Set<LlmCapability> capabilities() {
+            return EnumSet.of(LlmCapability.SYNC_CHAT, LlmCapability.TOOL_CALLING);
+        }
+    }
+
+    /**
      * 天气查询工具。
      *
      * 职责：提供一个最小工具定义，验证请求会把工具带给模型
@@ -168,6 +278,32 @@ class ReActAgentToolCallingTest {
             return ToolResult.builder()
                     .success(true)
                     .content("晴朗，微风，气温25度")
+                    .build();
+        }
+    }
+
+    /**
+     * 景点推荐工具。
+     *
+     * 职责：提供第二个工具，验证单轮多工具回写
+     *
+     * @author xiexu
+     */
+    private static final class AttractionTool implements Tool {
+
+        @Override
+        public ToolDefinition definition() {
+            return ToolDefinition.builder()
+                    .name("AttractionTool")
+                    .description("推荐景点")
+                    .build();
+        }
+
+        @Override
+        public ToolResult execute(ToolRequest request, ToolContext context) {
+            return ToolResult.builder()
+                    .success(true)
+                    .content("推荐去颐和园")
                     .build();
         }
     }

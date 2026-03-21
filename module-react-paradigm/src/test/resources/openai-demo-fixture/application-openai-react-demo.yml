@@ -1,7 +1,3 @@
-spring:
-  config:
-    import: optional:application-openai-react-demo-local.yml
-
 llm:
   provider: openai-compatible
   base-url: https://api.openai.com

@@ -8,7 +8,9 @@ import org.springframework.ai.openai.api.OpenAiApi;
 /**
  * OpenAI compatible ChatModel 工厂
  *
- * 职责：把统一 llm 配置转换为 Spring AI OpenAI compatible ChatModel
+ * 职责：在启动阶段把统一 {@link LlmProperties} 中的 `baseUrl`、`apiKey`、`model`
+ * 和 `chatCompletionsPath` 转换为 Spring AI 的 {@link OpenAiChatModel}；
+ * 它只负责创建底层模型对象，不负责创建统一网关
  *
  * @author xiexu
  */
@@ -17,7 +19,13 @@ public class OpenAiCompatibleChatModelFactory {
     static final String DEFAULT_CHAT_COMPLETIONS_PATH = "/v1/chat/completions";
 
     /**
-     * 创建 ChatModel。
+     * 创建工厂
+     */
+    public OpenAiCompatibleChatModelFactory() {
+    }
+
+    /**
+     * 基于统一配置创建 ChatModel
      *
      * @param properties 统一配置
      * @return OpenAI compatible ChatModel
@@ -37,6 +45,12 @@ public class OpenAiCompatibleChatModelFactory {
                 .build();
     }
 
+    /**
+     * 解析聊天接口路径
+     *
+     * @param properties 统一配置
+     * @return 聊天接口路径
+     */
     private String resolveChatCompletionsPath(LlmProperties properties) {
         String path = properties.getChatCompletionsPath();
         if (path == null || path.isBlank()) {

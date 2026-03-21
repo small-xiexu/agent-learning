@@ -10,6 +10,7 @@ import org.springframework.ai.chat.messages.UserMessage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Spring AI 消息映射器
@@ -37,7 +38,7 @@ public class SpringAiMessageMapper {
             return new SystemMessage(message.getContent());
         }
         if (message.getRole() == MessageRole.ASSISTANT) {
-            return new AssistantMessage(message.getContent());
+            return toAssistantMessage(message);
         }
         if (message.getRole() == MessageRole.TOOL) {
             ToolResponseMessage.ToolResponse response = new ToolResponseMessage.ToolResponse(
@@ -49,6 +50,48 @@ public class SpringAiMessageMapper {
                     .build();
         }
         throw new IllegalArgumentException("unsupported message role: " + message.getRole());
+    }
+
+    /**
+     * 将框架助手消息转换为 Spring AI 助手消息，并尽量保留 tool_calls 元数据。
+     *
+     * @param message 框架消息
+     * @return Spring AI 助手消息
+     */
+    @SuppressWarnings("unchecked")
+    private AssistantMessage toAssistantMessage(Message message) {
+        Object rawToolCalls = message.getMetadata().get(SpringAiResponseMapper.ASSISTANT_TOOL_CALLS_METADATA_KEY);
+        if (!(rawToolCalls instanceof List<?> toolCallsMetadata) || toolCallsMetadata.isEmpty()) {
+            return new AssistantMessage(message.getContent());
+        }
+        List<AssistantMessage.ToolCall> toolCalls = new ArrayList<AssistantMessage.ToolCall>();
+        for (Object item : toolCallsMetadata) {
+            if (!(item instanceof Map<?, ?> toolCallMetadata)) {
+                continue;
+            }
+            toolCalls.add(new AssistantMessage.ToolCall(
+                    valueAsString(toolCallMetadata.get("id")),
+                    valueAsString(toolCallMetadata.get("type")),
+                    valueAsString(toolCallMetadata.get("name")),
+                    valueAsString(toolCallMetadata.get("arguments"))));
+        }
+        if (toolCalls.isEmpty()) {
+            return new AssistantMessage(message.getContent());
+        }
+        return AssistantMessage.builder()
+                .content(message.getContent())
+                .toolCalls(List.copyOf(toolCalls))
+                .build();
+    }
+
+    /**
+     * 将任意对象安全转换为字符串。
+     *
+     * @param value 待转换值
+     * @return 字符串结果
+     */
+    private String valueAsString(Object value) {
+        return value == null ? null : String.valueOf(value);
     }
 
     /**
