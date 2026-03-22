@@ -2,6 +2,8 @@ package com.xbk.agent.framework.reflection.infrastructure.agentframework.node;
 
 import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.action.AsyncNodeAction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
@@ -18,6 +20,7 @@ import java.util.concurrent.CompletableFuture;
  */
 public class JavaReviewerNode implements AsyncNodeAction {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(JavaReviewerNode.class);
     private static final String REVIEWER_PROMPT_TEMPLATE = """
             原始任务：
             {input}
@@ -26,7 +29,8 @@ public class JavaReviewerNode implements AsyncNodeAction {
             {current_code}
 
             请从时间复杂度角度给出评审意见。
-            如果已经无需继续优化，请明确输出“无需改进”。
+            如果仍然存在明确、可落地的复杂度优化空间，请不要输出“无需改进”，而是明确指出瓶颈和下一轮如何修改。
+            只有当当前实现已经没有明显的时间复杂度优化空间时，才明确输出“无需改进”。
             """;
 
     private final ChatModel chatModel;
@@ -52,10 +56,37 @@ public class JavaReviewerNode implements AsyncNodeAction {
                 .replace("{input}", state.value("input", ""))
                 .replace("{current_code}", state.value("current_code", ""));
         ChatResponse response = chatModel.call(new Prompt(prompt));
+        // 取出 reviewer 本轮返回的自然语言评审意见文本。
         String text = response.getResult().getOutput().getText();
+        // 从全局状态读取当前已完成的评审轮次；首次进入时默认从 0 开始。
         int currentIterationCount = state.value("iteration_count", Integer.class).orElse(Integer.valueOf(0));
+        int nextIterationCount = currentIterationCount + 1;
+        LOGGER.info("reviewer completed: previousIterationCount={}, nextIterationCount={}, reviewFeedbackPreview={}",
+                currentIterationCount,
+                nextIterationCount,
+                summarizeForLog(text));
+        // 返回一个已完成的异步结果：
+        // 1. review_feedback 保存本轮最新评审意见，避免 text 为 null；
+        // 2. iteration_count 在当前轮次基础上加 1，表示本轮 reviewer 已执行完成。
         return CompletableFuture.completedFuture(Map.of(
                 "review_feedback", text == null ? "" : text,
-                "iteration_count", currentIterationCount + 1));
+                "iteration_count", nextIterationCount));
+    }
+
+    /**
+     * 生成适合日志输出的简短摘要。
+     *
+     * @param text 原始文本
+     * @return 日志摘要
+     */
+    private String summarizeForLog(String text) {
+        if (text == null || text.isBlank()) {
+            return "(empty)";
+        }
+        String normalized = text.replaceAll("\\s+", " ").trim();
+        if (normalized.length() <= 120) {
+            return normalized;
+        }
+        return normalized.substring(0, 120) + "...";
     }
 }

@@ -234,10 +234,18 @@ class ReflectionPrimeGenerationDemoTest {
             String promptText = prompt.getContents();
             if (currentCall == 1) {
                 assertTrue(promptText.contains(PRIME_TASK), "JavaCoderNode 初稿提示词缺少任务描述");
+                assertTrue(promptText.contains("优先给出一版正确、可运行、便于后续优化的基础实现"),
+                        "JavaCoderNode 初稿提示词缺少“首轮先给基础版”约束");
+                assertTrue(promptText.contains("第一轮不要一开始就追求最优时间复杂度"),
+                        "JavaCoderNode 初稿提示词缺少“首轮不要直接追求最优复杂度”约束");
                 return buildChatResponse(naivePrimeCode());
             }
             if (currentCall == 2) {
                 assertTrue(promptText.contains(naivePrimeCode()), "JavaReviewerNode 提示词缺少当前代码");
+                assertTrue(promptText.contains("如果仍然存在明确、可落地的复杂度优化空间，请不要输出“无需改进”"),
+                        "JavaReviewerNode 提示词缺少“有优化空间时不要停止”约束");
+                assertTrue(promptText.contains("只有当当前实现已经没有明显的时间复杂度优化空间时，才明确输出“无需改进”"),
+                        "JavaReviewerNode 提示词缺少“仅在确实收敛时才停止”约束");
                 return buildChatResponse("""
                         当前代码时间复杂度接近 O(n^2)，主要瓶颈是对每个 candidate 都重复试除。
                         建议改成埃拉托斯特尼筛法，并从 candidate * candidate 开始标记合数。
