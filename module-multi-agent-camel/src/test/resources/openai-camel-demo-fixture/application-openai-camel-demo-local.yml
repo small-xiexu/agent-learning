@@ -1,0 +1,10 @@
+llm:
+  provider: openai-compatible
+  base-url: https://api.openai.com
+  api-key: fixture-camel-key
+  model: gpt-4o
+
+demo:
+  camel:
+    openai:
+      enabled: true
