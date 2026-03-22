@@ -6,402 +6,203 @@
 
 - [Plan-and-Solve范式新手导读](../docs/Plan-and-Solve范式新手导读.md)
 
-这篇导读会先用“买苹果问题”讲清：
+这篇导读会优先把下面几件事讲清楚：
 
-- Plan-and-Solve 到底是什么
-- 手写版和 Spring AI Alibaba 版有什么区别
-- `description`、`systemPrompt`、`instruction` 怎么分工
-- `input`、`plan_result`、`final_answer` 是怎么在状态里流转的
+- Plan-and-Solve 为什么不是“复杂版 ReAct”
+- 手写版为什么依赖 `AgentLlmGateway` 和 `history`
+- 框架版为什么依赖 `SequentialAgent`、`outputKey`、`OverAllState`
+- Spring AI 和 Spring AI Alibaba 在这个模块里各自落在哪一层
+- 真实 OpenAI Demo 需要哪些配置、怎么启动
 
-看完这篇导读，再回来看当前 README 和源码，会顺很多。
+README 负责给你模块级总览；导读负责把运行机制讲透。
 
 ## 模块定位
 
-`module-plan-replan-paradigm` 用于承载“先谋后动”的复杂任务求解范式。  
-它的目标不是让 Agent 更会“即兴发挥”，而是让 Agent 在面对多步骤、长链路、高风险任务时，先产出一份可执行蓝图，再按蓝图执行，并在必要时重规划。
+`module-plan-replan-paradigm` 用于承载“先规划、再执行”的复杂任务求解范式。
 
-这是一种典型的企业级模式：  
-当任务代价高、错误成本大、子任务之间存在明显依赖时，先计划再执行几乎总是比纯 ReAct 更稳。
+它适合的不是“当前一步怎么边想边做”，而是这类任务：
 
-## 🎯 最佳实践场景
+- 步骤长
+- 前后依赖明显
+- 错误成本高
+- 需要先得到一份执行路线图
 
-**复杂长篇研报生成或数学求解**：拒绝盲目行动，强制大模型先输出包含子任务的“执行蓝图（JSON）”，再由执行器按蓝图严谨地逐步执行。
+如果 ReAct 更关注动态工具调用，Reflection 更关注做完后的二次审查，那么 Plan-and-Solve 更关注：
 
-## 理论背景
+**在行动之前，先把执行路线显式拆出来。**
 
-纯 ReAct 的优势是灵活，但在复杂任务上容易出现三类问题：
+## 最佳实践场景
 
-- 只关注局部最优，逐步偏离整体目标
-- 在长链路中丢失中间约束
-- 遇到异常时不知道该继续、回退还是重做
+**复杂数学求解、长链路推导、结构化研报生成**：先要求模型输出一份可执行计划，再让执行器按计划推进，而不是一开始就一路即兴。
 
-Plan-Execute-Replan 的思想正是为了解决这些问题。
+## 模块里的最小对照样例
 
-它把问题分成两个不同认知阶段：
-
-1. `Planning Phase`
-   先把问题拆成有顺序、有依赖、有完成标准的子任务列表。
-2. `Solving Phase`
-   按照计划逐步执行，而不是在每一轮都重新即兴决定全局路线。
-
-如果执行阶段发现世界状态发生变化、某个假设不成立、或者某个子任务失败，则进入 `Replan`，对剩余计划进行局部修正，而不是把全部任务推倒重来。
-
-## 运行机制
-
-该模块建议采用 4 段式执行模型：
-
-### 1. 规划
-
-模型先基于用户目标生成结构化计划。  
-计划至少应包含：
-
-- 子任务编号
-- 子任务目标
-- 依赖关系
-- 完成标准
-- 预期输出
-
-### 2. 执行
-
-调度器按顺序取出当前子任务，调用工具、子流程或 ReAct 子 Agent 完成执行。
-
-### 3. 状态评估
-
-每完成一步，都要判断：
-
-- 当前子任务是否完成
-- 后续计划是否仍然成立
-- 是否需要补充信息、回滚或跳过
-
-### 4. 重规划
-
-如果发现：
-
-- 工具执行结果与原假设冲突
-- 外部环境变化导致后续子任务失效
-- 子任务失败且可替代路径存在
-
-则只重写剩余计划，而不是整体重启。
-
-## 买苹果问题双实现对照
-
-为了把 Plan-and-Solve 真正看懂，这个模块里已经落了一道最小对照样例：
+本模块用“买苹果问题”做最小对照：
 
 > 一个水果店周一卖出了15个苹果。周二卖出的苹果数量是周一的两倍。周三卖出的数量比周二少了5个。请问这三天总共卖出了多少个苹果？
 
-最终答案都是：
+这道题看起来简单，但非常适合用来讲 Plan-and-Solve：
 
-- 周一：15
-- 周二：30
-- 周三：25
-- 总数：70
+- 计划天然有顺序
+- 每一步结果都会影响下一步
+- 很适合观察手写 `history` 和状态键交接的差别
 
-但两套实现的工程思路完全不同。
+## 双实现总览
 
-### 1. 纯手写底层逻辑版
+### 1. 手写版 Plan-and-Solve runtime
 
-这套实现对应“Plan-and-Solve 的原始 runtime 思路”。
-
-核心类有 3 个：
+核心类：
 
 - `HandwrittenPlanner`
 - `HandwrittenExecutor`
 - `HandwrittenPlanAndSolveAgent`
+- `PlanStep`
+- `StepExecutionRecord`
 
-对应代码入口：
+代码入口：
 
 - `src/main/java/com/xbk/agent/framework/planreplan/application/executor/HandwrittenPlanner.java`
 - `src/main/java/com/xbk/agent/framework/planreplan/application/executor/HandwrittenExecutor.java`
 - `src/main/java/com/xbk/agent/framework/planreplan/application/coordinator/HandwrittenPlanAndSolveAgent.java`
+- `src/main/java/com/xbk/agent/framework/planreplan/domain/plan/PlanStep.java`
+- `src/main/java/com/xbk/agent/framework/planreplan/domain/execution/StepExecutionRecord.java`
 
-运行链路如下：
+这一版的关键点是：
 
-```mermaid
-flowchart TD
-    A[原始问题] --> B[HandwrittenPlanner]
-    B --> C[生成步骤计划]
-    C --> D[HandwrittenPlanAndSolveAgent]
-    D --> E[for 循环逐步执行]
-    E --> F[HandwrittenExecutor]
-    F --> G[返回当前步骤结果]
-    G --> H[Java 代码手动追加 history]
-    H --> E
-```
+- Planner 先生成步骤计划
+- Executor 只负责执行当前步骤
+- `history` 由 Java 代码显式累加
+- `for` 循环由 Java 代码显式推进
 
-这一版最重要的观察点不是“答案对不对”，而是：
+它最适合用来理解：
 
-- 计划是你自己解析的
-- 循环是你自己写的
-- `history` 是你自己维护的
-- 每一步发给模型什么上下文，也是你自己拼的
+- Plan-and-Solve 的最小 runtime 到底长什么样
+- 为什么阶段执行要依赖计划和历史
+- 为什么流程复杂后，协调器会越来越像调度器
 
-换句话说，这一版里：
+### 2. Spring AI Alibaba 顺序编排版
 
-**模型只负责出计划和执行单步，整个运行时控制权仍然在 Java 代码手里。**
-
-### 2. Spring AI Alibaba 原生顺序编排版
-
-这套实现对应“企业级编排 runtime 思路”。
-
-核心封装类：
+核心类：
 
 - `AlibabaSequentialPlanAndSolveAgent`
+- `plannerAgent`
+- `executorAgent`
 
-对应代码入口：
+代码入口：
 
 - `src/main/java/com/xbk/agent/framework/planreplan/infrastructure/agentframework/AlibabaSequentialPlanAndSolveAgent.java`
 
-这一版内部并不是手写 `for` 循环，而是：
+这一版的关键点是：
 
-- 创建 `PlannerAgent`
-- 创建 `ExecutorAgent`
-- 用 `SequentialAgent` 把两个子 Agent 串起来
+- 通过 `ReactAgent` 声明 Planner 和 Executor 两个阶段
+- 通过 `SequentialAgent` 顺序串联阶段
+- 通过 `outputKey` 把阶段结果写入状态
+- 通过 `instruction` 占位符读取上游阶段输出
+- 最终通过 `OverAllState` 回放运行结果
 
-运行链路如下：
+## Spring AI / Spring AI Alibaba 在这里怎么落地
 
-```mermaid
-flowchart TD
-    A[原始问题 input] --> B[PlannerAgent]
-    B --> C[outputKey = plan_result]
-    C --> D[SequentialAgent 全局状态]
-    D --> E[ExecutorAgent]
-    E --> F[读取 input 和 plan_result]
-    F --> G[outputKey = final_answer]
-```
+### 手写版：统一网关抽象，Spring AI 做底层适配
 
-这一版最重要的观察点是：
+手写版业务代码依赖的是：
 
-- 计划结果不是你自己手动塞回下一轮 Prompt
-- Planner 的输出先写到状态里
-- Executor 再通过 `{input}`、`{plan_result}` 这种占位符读取状态
-- 阶段切换由框架 runtime 负责编排
+- `AgentLlmGateway`
+- `LlmRequest`
+- `LlmResponse`
 
-换句话说，这一版里：
+真实模型接入仍然可以走统一链路：
 
-**Java 代码更像是在声明“有哪些阶段、每一阶段输出到哪个状态键”，而不是亲自写循环推进。**
+1. `framework-llm-autoconfigure` 读取统一 `llm.*` 配置
+2. 自动装配 `AgentLlmGateway`
+3. `framework-llm-springai` 创建 Spring AI `ChatModel`
+4. `SpringAiLlmClient` 把统一请求转成 Spring AI `Prompt`
+5. 最终由 `ChatModel.call(...)` 发起真实调用
 
-### 3. `history` 累加 与 `outputKey` 状态流转 的工程差异
+### 框架版：围绕 `SequentialAgent + OverAllState` 做阶段编排
 
-这是这两套代码最值得反复看的地方。
+框架版更贴近 Spring AI Alibaba 的企业级组织方式：
 
-#### 手写版：`history` 是运行时自己维护的
+- `plannerAgent` 读取 `{input}` 并输出 `plan_result`
+- `executorAgent` 读取 `{input}` 和 `{plan_result}` 并输出 `final_answer`
+- `SequentialAgent` 负责按顺序推进这两个阶段
+- `OverAllState` 负责持有整条链最终的状态快照
 
-在 `HandwrittenPlanAndSolveAgent` 里，每完成一步，Java 代码都会：
+这说明框架版最重要的变化不是“少写几行代码”，而是：
 
-1. 拿到当前步骤结果
-2. 追加一条 `StepExecutionRecord`
-3. 在下一轮执行前把全部 `history` 再拼进 Prompt
+**阶段之间开始靠状态协议交接，而不是靠手动拼字符串交接。**
 
-这意味着：
+## 与测试的对应关系
 
-- 控制力最强
-- 每一步上下文长什么样完全可控
-- 适合学习底层逻辑
-- 但一旦流程变复杂，Java 代码会越来越像“手写调度器”
+如果你想先看“这个模块到底保证了什么行为”，优先看：
 
-所以手写版更像：
+- `src/test/java/com/xbk/agent/framework/planreplan/PlanAndSolveAppleProblemDemoTest.java`
 
-**程序员自己维护一个 mini runtime。**
+这组测试同时钉住了：
 
-#### 框架版：`outputKey` 是状态容器里的阶段交接协议
+- 手写版必须先规划，再按计划逐步执行
+- 框架版必须通过 `outputKey` 状态流转完成同一问题
+- `plan_result` 和 `final_answer` 必须真实进入状态
 
-在 `AlibabaSequentialPlanAndSolveAgent` 里：
+## 真实 OpenAI Demo
 
-- `PlannerAgent` 把结果写到 `plan_result`
-- `ExecutorAgent` 从状态里读 `plan_result`
-- 最终答案再写到 `final_answer`
+当前模块保留了两套真实模型 Demo：
 
-这意味着：
+- `src/test/java/com/xbk/agent/framework/planreplan/HandwrittenPlanAndSolveOpenAiDemo.java`
+- `src/test/java/com/xbk/agent/framework/planreplan/AlibabaSequentialPlanAndSolveOpenAiDemo.java`
 
-- 阶段之间不再靠你手动拼接字符串传递
-- 而是靠“状态键名”做显式交接
-- 子 Agent 的职责边界更稳定
-- 更适合扩展成更长的企业级流水线
-
-所以框架版更像：
-
-**程序员在设计状态协议，而不是手写每一轮调度细节。**
-
-### 4. 为什么这两个版本都值得学
-
-只学手写版，容易停留在：
-
-- 我知道 Plan-and-Solve 要先规划再执行
-- 但不知道企业项目为什么还要框架编排
-
-只学框架版，容易停留在：
-
-- 我会配 `SequentialAgent`
-- 但不知道框架到底替我接管了哪些运行时工作
-
-把这两个版本放在一起看，才能真正看清：
-
-- 手写版是在学范式本体
-- 框架版是在学工程化落地
-
-### 5. 推荐阅读顺序
-
-如果你想顺着源码真正吃透，推荐顺序如下：
-
-1. 先看 `HandwrittenPlanner`
-   - 看 Planner 的系统提示词如何强制输出编号步骤
-
-2. 再看 `HandwrittenExecutor`
-   - 看 `{question}`、`{plan}`、`{history}`、`{current_step}` 怎么被拼进执行提示词
-
-3. 再看 `HandwrittenPlanAndSolveAgent`
-   - 看 `for` 循环如何手动推进整条链
-
-4. 最后看 `AlibabaSequentialPlanAndSolveAgent`
-   - 看 `outputKey`、`includeContents`、`returnReasoningContents` 如何把阶段交接显式化
-
-5. 再看测试
-   - `src/test/java/com/xbk/agent/framework/planreplan/PlanAndSolveAppleProblemDemoTest.java`
-   - 这里同时钉住了两套实现的预期行为，是最好的对照入口
-
-### 6. 真实 OpenAI Demo 入口
-
-除了上面的稳定桩测试，这个模块现在还补了两份真实模型 Demo，用来观察大模型真实输出下的执行轨迹：
-
-- 手写版真实 Demo
-  - `src/test/java/com/xbk/agent/framework/planreplan/HandwrittenPlanAndSolveOpenAiDemo.java`
-- Spring AI Alibaba 顺序编排版真实 Demo
-  - `src/test/java/com/xbk/agent/framework/planreplan/AlibabaSequentialPlanAndSolveOpenAiDemo.java`
-
-对应配置文件在：
+对应配置：
 
 - `src/test/resources/application-openai-plan-solve-demo.yml`
 - `src/test/resources/application-openai-plan-solve-demo-local.yml.example`
+- `src/test/resources/application-openai-plan-solve-demo-local.yml`
 
-推荐做法：
+运行真实 Demo 前至少要准备两件事：
 
-1. 复制一份 `application-openai-plan-solve-demo-local.yml.example`
-2. 重命名为 `application-openai-plan-solve-demo-local.yml`
-3. 填写真实的 `llm.base-url`、`llm.api-key`、`llm.model`
-4. 打开 `demo.plan-solve.openai.enabled=true`
+1. 在本地配置文件里填入真实 `llm.api-key`
+2. 显式开启 `demo.plan-solve.openai.enabled=true`
 
-这两份真实 Demo 的观察重点不同：
+默认情况下，真实 Demo 会被安全跳过，避免日常测试误打外网。
 
-- `HandwrittenPlanAndSolveOpenAiDemo`
-  - 重点看 `PLAN -> ...` 和 `HISTORY -> ...`
-  - 它反映的是 Java 运行时代码如何自己累加 `history`
+## 推荐阅读顺序
 
-- `AlibabaSequentialPlanAndSolveOpenAiDemo`
-  - 重点看 `STATE_KEYS -> ...`、`STATE_META -> ...`、`PLAN_RESULT`、`FINAL_ANSWER`
-  - 它反映的是框架如何用 `outputKey` 把阶段结果写入全局状态，再由下游 Agent 读取
+如果你想顺着源码快速吃透，推荐顺序如下：
 
-Alibaba 版日志现在推荐按这种方式阅读：
-
-```text
-=== SequentialAgent Plan-and-Solve + OpenAI(gpt-4o) 执行完成后的状态回放 ===
-STATE_KEYS -> [_graph_execution_id_, input, messages, plan_result, final_answer]
-STATE_META -> plan_result=AssistantMessage, final_answer=AssistantMessage
-
-PLAN_RESULT
-  1. 确定周一卖出的苹果数量。
-  2. 计算周二卖出的苹果数量（周一的两倍）。
-  3. 计算周三卖出的苹果数量（比周二少5个）。
-
-FINAL_ANSWER
-  周一卖出15个苹果。
-  周二卖出30个苹果。
-  周三卖出25个苹果。
-  最终答案：70个苹果。
-```
-
-这样比直接打印 `PLAN_RESULT(text) -> 多行文本` 更适合日志场景，原因有两个：
-
-- 多行正文被拆成独立分段，终端里不会出现“只有第一行带日志前缀，后面几行像裸文本”的问题
-- `STATE_META` 单独保留了状态类型信息，但不会和真正的计划正文、答案正文混在一起
-
-## Spring AI Alibaba 映射
-
-这个模块与 Spring AI Alibaba 的映射不是“一个现成类名对一个模块”，而是一个**组合式落地模式**。
-
-### 1. 结构化输出是规划阶段的核心抓手
-
-官方文档明确支持 `outputType` 与 `outputSchema` 两种结构化输出策略。  
-这意味着规划阶段不应该让模型返回一段自由文本，而应该强制它返回结构化计划对象。
-
-推荐做法：
-
-- 固定 `Plan`, `PlanStep`, `ExecutionDecision` 等 DTO
-- 优先使用 `outputType`
-- 在需要更强约束时使用 `outputSchema`
-
-### 2. 状态持久化承载计划生命周期
-
-规划结果、当前步骤、已完成子任务、失败原因、重规划次数，都不应散落在字符串 Prompt 中。  
-这些状态应写入统一状态容器，由运行时调度器显式管理。
-
-在 Spring AI Alibaba 侧，可以结合：
-
-- `invoke` 返回的完整状态
-- Graph Runtime 的状态对象
-- `outputKey` 和占位符机制
-
-把“计划文本”升级成“计划状态”。
-
-### 3. 工具错误拦截是 Replan 的触发器
-
-`ToolErrorInterceptor`、Hooks 与统一工具结果对象，是触发重规划的关键入口。  
-它们让系统可以区分：
-
-- 这是一个可重试错误
-- 这是一个需要替换路径的错误
-- 这是一个必须终止任务的错误
-
-## 与 framework-core 的关系
-
-这个模块高度依赖 `framework-core` 的三个能力：
-
-- `AgentLlmGateway`：负责规划阶段和重规划阶段的结构化输出
-- `Memory / Message`：负责保留执行轨迹与上下文
-- `ToolRegistry`：负责子任务执行的外部能力调度
-
-建议的实现方式不是让模块直接绑死某个 `ReactAgent` Builder，而是：
-
-- 用 `framework-core.llm` 做规划与重规划
-- 用 `framework-core.tool` 做执行
-- 用模块内调度器决定“何时执行、何时重规划”
+1. 先看 `PlanAndSolveAppleProblemDemoTest`
+2. 再看手写版
+   - `HandwrittenPlanner`
+   - `HandwrittenExecutor`
+   - `HandwrittenPlanAndSolveAgent`
+3. 再看框架版
+   - `AlibabaSequentialPlanAndSolveAgent`
+4. 最后看真实 Demo 和配置支持类
+   - `HandwrittenPlanAndSolveOpenAiDemo`
+   - `AlibabaSequentialPlanAndSolveOpenAiDemo`
+   - `OpenAiPlanSolveDemoPropertySupport`
 
 ## 工程落地建议
 
-### 1. 计划必须有完成定义
+### 1. 计划必须真的可执行
 
-没有完成标准的子任务，本质上只是“待办清单”，不是可执行蓝图。
+如果 Planner 只输出空泛口号，Plan-and-Solve 就会退化成“先写一段总结，再继续瞎做”。
 
-### 2. Replan 要有上限
+### 2. 阶段边界必须稳定
 
-重规划是一种纠偏能力，不是无限自救。  
-应设置最大重规划次数与成本预算。
+无论是手写 `history`，还是框架版 `outputKey`，都必须让阶段之间的输入输出关系足够清晰。
 
-### 3. 计划与执行要解耦
+### 3. 不要把所有问题都硬套成 Plan-and-Solve
 
-规划模型负责“给出路线”，执行器负责“落地动作”。  
-不要把执行逻辑再次混回 Prompt，让模型同时扮演 PM、执行器和审计员。
+如果任务更像实时查工具，就该用 ReAct；
+如果任务更像做完再审一次，就该用 Reflection。
 
-### 4. 优先局部重规划
+### 4. 真正需要治理的是状态交接
 
-企业任务里最贵的不是“算一次计划”，而是“推倒一切重做”。  
-应尽量只修正剩余步骤。
-
-## 适用场景与边界
-
-### 适用场景
-
-- 多步骤依赖明显的复杂任务
-- 长链路工具编排
-- 需要进度可追踪、状态可审计的任务
-
-### 不适合的场景
-
-- 只需一两步工具调用的简单任务
-- 需要极低延迟的短问答
-- 规划成本明显高于执行成本的场景
+Plan-and-Solve 的工程核心不是“先想一下”，而是“计划、历史和结果如何在阶段之间可靠传递”。
 
 ## 结论
 
-Plan-Execute-Replan 的本质，不是让模型“先写个计划书”，而是把复杂任务求解从即兴对话升级为受控执行系统。
+这个模块最重要的价值，不是把买苹果问题做对，而是把同一个 Plan-and-Solve 闭环同时落成了两种 runtime：
 
-在本项目中，`module-plan-replan-paradigm` 应承担复杂任务编排的“蓝图层”，是从单 Agent 灵活执行迈向可治理复杂流程的关键一步。
+- 手写版：帮助你理解范式本体
+- 顺序编排版：帮助你理解工程化落地
+
+把这两套实现对照着看，才能真正看清 Plan-and-Solve 在这个仓库里的完整位置。

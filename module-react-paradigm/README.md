@@ -1,176 +1,203 @@
 # module-react-paradigm
 
+## 新手导航
+
+如果你是第一次接触这个模块，建议先读：
+
+- [ReAct范式新手导读](../docs/ReAct范式新手导读.md)
+
+扩展阅读：
+
+- [ReAct学习路径](../docs/ReAct学习路径.md)
+- [ReAct手写版与官方版对照](../docs/ReAct手写版与官方版对照.md)
+
+这篇导读会优先把下面几件事讲清楚：
+
+- ReAct 为什么不是“会调工具的聊天模型”
+- 手写版为什么依赖 `AgentLlmGateway`、`Message`、`ToolRegistry`
+- 官方版为什么依赖 Spring AI Alibaba `ReactAgent`
+- `call()` 和 `invoke()` 分别适合看什么
+- 真实 OpenAI Demo 需要哪些配置、怎么启动
+
+README 负责给你模块级总览；导读负责把运行机制讲透；扩展阅读负责更细的源码对照。
+
 ## 模块定位
 
-`module-react-paradigm` 用于承载单体智能体中最经典的 ReAct（Reasoning + Acting）范式。  
-它的目标不是“包装一个会调用工具的聊天模型”，而是把“思考、行动、观察、再思考”的闭环明确建模为可治理、可扩展、可替换的工程结构。
+`module-react-paradigm` 用于承载单体智能体里最经典的 ReAct 范式。
 
-在 `spring-ai-agent-framework` 中，这个模块应当成为默认的单 Agent 起点：  
-当任务还不需要显式规划、图编排或多智能体协作时，优先使用 ReAct，而不是过早引入复杂工作流。
+它解决的核心问题不是“怎么多说几句”，而是：
 
-## 🎯 最佳实践场景
+- 模型缺信息时，怎么显式决定调用工具
+- 工具返回结果后，怎么驱动模型继续思考
+- 整个推理和行动闭环，怎么被程序治理而不是只靠 prompt
 
-**智能旅行助手**：能够处理“思考查询天气 -> 行动调用 API -> 观察结果后再思考推荐景点”这种需要动态与外部世界交互的连贯任务。
+如果 Reflection 更关注“做完以后怎么再审一次”，Plan-and-Solve 更关注“先拆计划再执行”，那么 ReAct 更关注：
 
-## 理论背景
+**当前这一步缺什么信息，我要不要先行动，再基于新事实继续推理。**
 
-ReAct 的核心价值在于把推理与行动显式耦合起来。
+## 最佳实践场景
 
-传统单轮 LLM 问答的问题在于：模型只能“想”，不能“证伪自己的想法”。  
-而 ReAct 通过以下循环打破这一点：
+**智能旅行助手**：先判断是否需要查天气，再调用天气工具，再基于天气结果调用景点推荐工具，最后输出完整建议。
 
-1. `Thought`：模型分析当前上下文，决定下一步策略。
-2. `Action`：模型调用外部工具或执行具体动作。
-3. `Observation`：工具返回客观世界的反馈。
-4. 回到新的 `Thought`：模型基于新事实修正判断。
+## 模块里的双实现对照
 
-这套机制的工程意义非常强：
+### 1. 手写版 ReAct runtime
 
-- 推理不再是闭门造车，而是被外部事实持续校正。
-- 工具不再只是外挂能力，而是推理过程的一部分。
-- Agent 的正确性不再只依赖提示词，而依赖“推理 + 执行 + 反馈”的动态闭环。
+核心类：
 
-## 运行机制
+- `ReActAgent`
 
-该模块建议将 ReAct 运行时拆成 4 个稳定阶段：
+离线 Demo：
 
-### 1. 上下文装配
+- `ReActTravelDemo`
 
-从 `framework-core` 的 `Memory` 中读取当前会话消息；  
-从 `ToolRegistry` 中导出当前可用工具定义；  
-再配合系统提示、运行配置、停止条件组装出本轮上下文。
+它的关键点是：
 
-### 2. 推理决策
+- 通过 `AgentLlmGateway` 调模型
+- 通过 `ToolRegistry` 管理工具
+- 用 `List<Message> history` 手动维护上下文
+- 通过 `ToolCall` 判断是否继续行动
+- 用 `while (step < maxSteps)` 做死循环保护
 
-模型先判断当前是否已经具备足够信息：
+这一版最适合用来理解：
 
-- 如果信息不足，则产生下一步工具调用决策
-- 如果信息充足，则直接生成最终答案
+- ReAct 的最小 runtime 到底长什么样
+- 工具调用如何真正进入消息流
+- 为什么安全阀必须由程序显式控制
 
-### 3. 工具执行
+### 2. Spring AI Alibaba 官方版
 
-当模型发出工具调用请求后，由 `ToolRegistry` 路由到具体工具执行，并把结果写回消息流。
+核心类：
 
-### 4. 观察回灌
+- `ReactAgent`
+- `MemorySaver`
+- `RunnableConfig`
 
-工具结果被转化为新的 `Observation` 消息进入上下文，驱动下一轮推理。  
-循环会持续到以下任一条件满足为止：
+离线 Demo：
 
-- 模型输出最终答案
-- 达到最大迭代次数
-- Hook 或拦截器提前终止流程
-- 工具调用失败且策略决定中止
+- `SpringAIReActTravelDemo`
 
-## Spring AI Alibaba 映射
+它的关键点是：
 
-这个模块与 Spring AI Alibaba 的映射关系非常直接。
+- 使用 `ReactAgent.builder()` 声明式组装 Agent
+- 用 `methodTools(...)` 把 Java 方法自动暴露成工具
+- 用 `MemorySaver` 保存线程态
+- 用 `call()` 拿最终答案，用 `invoke()` 拿完整状态
+- 不再手写 `while`，而是交给 Graph Runtime 自动流转
 
-### 1. 核心抽象
+## Spring AI / Spring AI Alibaba 在这里怎么落地
 
-Spring AI Alibaba 官方提供了基于 ReAct 理念的 `ReactAgent`。  
-它不是一个简单的“工具调用助手”，而是运行在 Graph Runtime 之上的生产级 Agent 抽象。
+### 手写版：统一网关抽象，Spring AI 做底层适配
 
-### 2. 底层执行图
+手写版业务代码直接依赖的是：
 
-官方文档明确指出 `ReactAgent` 基于 Graph 运行时构建，其核心节点包括：
+- `AgentLlmGateway`
+- `LlmRequest`
+- `LlmResponse`
+- `ToolRegistry`
 
-- `Model Node`：负责推理、生成最终答案或发起工具调用
-- `Tool Node`：负责执行工具
-- `Hook Nodes`：负责在人机协同、审计、停止条件等关键位置插入自定义逻辑
+但真实模型接入仍然可以走 Spring AI：
 
-因此，本模块的设计重点不应放在“如何手写 while 循环”，而应放在：
+1. `framework-llm-autoconfigure` 读取统一 `llm.*` 配置
+2. 自动装配 `AgentLlmGateway`
+3. `framework-llm-springai` 创建 Spring AI `ChatModel`
+4. `SpringAiLlmClient` 把统一请求转成 Spring AI `Prompt`
+5. 最终由 `ChatModel.call(...)` 发起真实调用
 
-- 如何约束模型的思考方式
-- 如何定义工具边界
-- 如何利用 Graph Runtime 的节点流转能力实现可靠闭环
+所以手写版是在统一协议层上学习 ReAct，本质上并不排斥 Spring AI。
 
-### 3. 对官方能力的工程使用建议
+### 官方版：直接围绕 Graph Runtime 组织闭环
 
-- 用 `ReactAgent` 作为对外的主要执行入口
-- 用 `invoke` 获取完整状态，而不是只拿最终文本
-- 用 Hooks 和 Interceptors 管理停止条件、审计、人工审批、工具错误恢复
-- 用最大迭代次数控制成本和死循环风险
+官方版更贴近 Spring AI Alibaba 的原生能力：
 
-## 与 framework-core 的关系
+- `ReactAgent` 负责组织模型节点和工具节点
+- `MemorySaver` 负责保存线程状态
+- `RunnableConfig.threadId` 负责隔离不同调用
+- `OverAllState` 负责暴露完整运行结果
 
-本模块不应直接把业务逻辑写死在 `ReactAgent` Builder 中，而应建立在 `framework-core` 的稳定协议之上：
+这说明官方版的重点不是“如何自己造 runtime”，而是“如何声明式地使用 runtime”。
 
-- `AgentLlmGateway`：统一模型入口，隔离底层 `ChatModel`
-- `Message / Memory`：统一消息与会话上下文
-- `Tool / ToolRegistry`：统一工具定义、发现与执行
+## 与测试和 Demo 的对应关系
 
-推荐的职责分工是：
+如果你想先看行为，再看实现，推荐优先看：
 
-- `framework-core` 决定“消息、工具、模型如何被统一抽象”
-- `module-react-paradigm` 决定“这些抽象如何组成 ReAct 闭环”
+- `src/test/java/com/xbk/agent/framework/react/ReActTravelDemo.java`
+- `src/test/java/com/xbk/agent/framework/react/SpringAIReActTravelDemo.java`
+- `src/test/java/com/xbk/agent/framework/react/ReActAgentToolCallingTest.java`
+
+这几组代码分别钉住了：
+
+- 手写版的旅行助手闭环
+- 官方版的旅行助手闭环
+- 工具调用与最大步数控制
+
+## 真实 OpenAI Demo
+
+当前模块保留了两套真实模型 Demo：
+
+- `src/test/java/com/xbk/agent/framework/react/ReActTravelOpenAiDemo.java`
+- `src/test/java/com/xbk/agent/framework/react/SpringAIReActTravelOpenAiDemo.java`
+
+对应配置：
+
+- `src/test/resources/application-openai-react-demo.yml`
+- `src/test/resources/application-openai-react-demo-local.yml.example`
+- `src/test/resources/application-openai-react-demo-local.yml`
+
+运行真实 Demo 前至少要准备两件事：
+
+1. 在本地配置文件里填入真实 `llm.api-key`
+2. 显式开启 `demo.react.openai.enabled=true`
+
+默认情况下，真实 Demo 会被安全跳过，避免日常测试误打外网。
+
+## 推荐阅读顺序
+
+如果你想顺着源码快速吃透，推荐顺序如下：
+
+1. 先看 `ReActAgent`
+2. 再看 `ReActTravelDemo`
+3. 再看 `SpringAIReActTravelDemo`
+4. 最后看真实 Demo 和配置支持类
+   - `ReActTravelOpenAiDemo`
+   - `SpringAIReActTravelOpenAiDemo`
+   - `OpenAiReactDemoPropertySupport`
+
+这样看，你会更容易把：
+
+- 范式本体
+- 统一协议层
+- Spring AI 模型接入
+- Spring AI Alibaba 图运行时
+
+这 4 层真正串起来。
 
 ## 工程落地建议
 
 ### 1. 工具颗粒度要小而稳定
 
-ReAct 最怕“一个万能工具做所有事情”。  
-工具应该围绕单一职责设计，让模型容易选择、容易恢复、容易观测。
+ReAct 最怕“一个万能工具做所有事”。
+工具职责越清晰，模型越容易选对，也越容易恢复和观测。
 
-### 2. Prompt 不要承担全部控制职责
+### 2. 停止条件必须显式
 
-系统提示只负责给出角色、目标和行为约束。  
-循环边界、最大迭代次数、错误处理、人工审批应由运行时机制控制，而不是寄希望于模型“自己懂得收敛”。
+不要指望模型“自己懂得停”。
+最大步数、错误处理和早停策略都应该由 runtime 明确治理。
 
 ### 3. Observation 必须可回放
 
-工具结果应写入统一消息协议，确保后续问题排查时可以还原 Agent 的决策轨迹。
+工具结果一定要可靠进入上下文。
+一旦 Observation 丢失，后续决策链路就会不可追踪。
 
-### 4. 把 ReAct 当作默认范式，而不是万能范式
+### 4. 把 ReAct 当成默认范式，但不要把它当万能范式
 
-当任务明显需要显式规划、复杂状态机或多专家协作时，应升级到 Plan-Replan、Graph Flow 或 Multi-agent 模块，而不是把 ReAct 循环无限堆大。
-
-## 真实 OpenAI 对照 Demo
-
-当前模块同时保留了两套 Demo：
-
-- 离线教学版：
-  - `ReActTravelDemo`
-  - `SpringAIReActTravelDemo`
-- 真实 OpenAI 对照版：
-  - `ReActTravelOpenAiDemo`
-  - `SpringAIReActTravelOpenAiDemo`
-
-真实对照版的设计目标是让手写版 `ReActAgent` 和官方 `ReactAgent` 共用同一个 `ChatModel` 与同一份本地 OpenAI 配置，从而进行真正的控制变量对照学习。
-
-运行真实 Demo 前需要准备：
-
-- 本地配置文件：`src/test/resources/application-openai-react-demo-local.yml`
-- 在本地配置文件中设置：`demo.react.openai.enabled=true`
-
-操作方式：
-
-1. 复制 `src/test/resources/application-openai-react-demo-local.yml.example`
-2. 重命名为 `src/test/resources/application-openai-react-demo-local.yml`
-3. 在这个本地文件里填写真实 `base-url`、`api-key`、`model`
-4. 把 `demo.react.openai.enabled` 设为 `true`
-
-这个本地文件已经被 `.gitignore` 忽略，不会被误提交到仓库。
-
-默认的 `mvn test` 只会运行离线教学版和配置装载测试；  
-真实 OpenAI Demo 在没有 Key 或没有显式开启时会自动跳过，避免日常测试误打外网。
-
-## 适用场景与边界
-
-### 适用场景
-
-- 单 Agent 工具调用
-- 中等复杂度的信息检索、分析、执行任务
-- 需要动态根据观察结果调整策略的任务
-
-### 不适合的场景
-
-- 必须先生成完整蓝图再逐步执行的复杂任务
-- 强状态机、强条件路由、强审计要求的流程
-- 需要多个专家角色长期协作的任务
+当任务更像“先拆计划”或“再做一轮审查”时，就应该升级到其它模块，而不是把 ReAct 循环无限堆大。
 
 ## 结论
 
-ReAct 不是“最简单的 Agent”，而是“最值得先落地的 Agent”。  
-它用最少的结构引入了最关键的能力：让推理与现实世界发生闭环。
+这个模块最重要的价值，不是证明 ReAct 会调工具，而是把同一个 ReAct 闭环同时落成了两种 runtime：
 
-在本项目中，`module-react-paradigm` 应被视为单体智能体的默认能力基座，也是其它高级范式的认知起点。
+- 手写版：帮助你理解范式本体
+- 官方版：帮助你理解框架运行时
+
+把这两套代码对照着看，才能真正看清 ReAct 在这个仓库里的完整位置。

@@ -6,170 +6,250 @@
 
 - [Reflection范式新手导读](../docs/Reflection范式新手导读.md)
 
-这篇导读会先用“素数生成代码优化”讲清：
+这篇导读会先把下面几件事讲清楚：
 
-- Reflection 到底在解决什么问题
-- 手写版运行时和图编排版运行时有什么区别
-- `ReflectionMemory` 和 `OverAllState` 分别承担什么角色
-- `while` 循环回环与 `StateGraph` 条件边回环的工程差异是什么
+- Reflection 为什么不是“多问几次模型”
+- 手写版为什么依赖 `AgentLlmGateway`
+- 图编排版为什么依赖 `ChatModel`、`FlowAgent`、`StateGraph`、`OverAllState`
+- Spring AI 和 Spring AI Alibaba 在这个例子里分别落在哪一层
+- 真实 OpenAI Demo 需要哪些配置、怎么启动
 
-看完导读，再回来看当前 README 和源码，会更容易把这两套实现对应起来。
+README 负责给你一个模块级总览；导读负责把底层运行机制讲透。
 
 ## 模块定位
 
-`module-reflection-paradigm` 用于承载“执行后自我批判，再继续修正”的反思型智能体范式。  
-它的目标不是让 Agent 反复重写答案，而是让系统具备一种工程化的“二次审视能力”：先产出方案，再以评审视角检查漏洞，最后决定是否继续迭代。
+`module-reflection-paradigm` 用于承载“先产出初稿，再显式评审，再按反馈修订，最后决定是否停止”的 Reflection 范式。
 
-如果 ReAct 解决的是“如何边做边想”，那么 Reflection 解决的是“做完之后如何挑错并优化”。
+它解决的不是“第一次完全不会做”的问题，而是这类更常见的场景：
 
-## 🎯 最佳实践场景
+- 第一次结果基本正确，但质量不够高
+- 已经能运行，但复杂度太差
+- 结构大体可用，但需要再做一轮严格审视
 
-**高质量代码生成与算法调优**：执行者先写出暴力解法，评审者再从时间复杂度角度指出瓶颈，并推动生成者把实现优化到筛法级别。
+如果 ReAct 更关注“边想边做”，Plan-and-Solve 更关注“先拆计划再执行”，那么 Reflection 更关注：
 
-## 素数生成双实现对照
+**第一次做完以后，怎么再从评审者视角把质量往上推一轮。**
 
-为了把 Reflection 真正看懂，这个模块里落了一道最小对照样例：
+## 最佳实践场景
+
+**高质量代码生成与算法调优**：先让生成者给出可运行初稿，再让评审者从时间复杂度和性能瓶颈角度挑错，最后推动系统把实现优化到更优解。
+
+## 模块里的最小对照样例
+
+本模块用一道素数题把 Reflection 钉成了可运行、可测试、可对照的样子：
 
 > 编写一个 Java 方法，找出 1 到 n 之间所有的素数，并返回一个 `List<Integer>`。
 
-两套实现最终都会把初稿从暴力试除法优化到埃拉托斯特尼筛法，但工程组织方式不同。
+这道题非常适合 Reflection：
 
-### 1. 纯手写运行时版
+- 初稿很容易写成暴力试除法
+- reviewer 很容易从时间复杂度切入
+- 优化方向会自然收敛到埃拉托斯特尼筛法
+- “是否还要继续优化”也容易设计成显式停止条件
 
-这套实现对应“Reflection 的原始 runtime 思路”。
+## 双实现总览
 
-核心类有：
+### 1. 手写版 Reflection runtime
+
+核心类：
 
 - `HandwrittenJavaCoder`
 - `HandwrittenJavaReviewer`
 - `ReflectionMemory`
+- `ReflectionTurnRecord`
 - `HandwrittenReflectionAgent`
 
-对应代码入口：
+代码入口：
 
 - `src/main/java/com/xbk/agent/framework/reflection/application/executor/HandwrittenJavaCoder.java`
 - `src/main/java/com/xbk/agent/framework/reflection/application/executor/HandwrittenJavaReviewer.java`
 - `src/main/java/com/xbk/agent/framework/reflection/domain/memory/ReflectionMemory.java`
+- `src/main/java/com/xbk/agent/framework/reflection/domain/memory/ReflectionTurnRecord.java`
 - `src/main/java/com/xbk/agent/framework/reflection/application/coordinator/HandwrittenReflectionAgent.java`
 
-这一版的关键观察点是：
+这一版的关键点是：
 
-- 初稿和优化版 Prompt 都由 Java 代码自己拼
-- 每轮评审结果由 `ReflectionMemory` 手动累加
-- 停止条件由 `HandwrittenReflectionAgent` 自己判断
-- 整个回环完全由 `while` 控制
+- coder 和 reviewer 都通过 `AgentLlmGateway` 调模型
+- prompt 由 Java 代码自己拼装
+- 每轮结果由 `ReflectionMemory` 显式记录
+- 停止条件由 `HandwrittenReflectionAgent` 在运行时检查
+- 整个回环由 Java 控制流直接推进
 
-换句话说，这一版里：
+它适合用来理解：
 
-**模型只负责“生成”和“评审”，运行时控制权仍然在 Java 代码手里。**
+- Reflection 的最小 runtime 到底长什么样
+- 为什么“生成”和“评审”要拆成两个角色
+- 为什么停止条件必须由程序治理，而不能只靠 prompt 礼貌请求
 
 ### 2. Spring AI Alibaba 图编排版
 
-这套实现对应“显式状态图 runtime 思路”。
-
-核心类有：
+核心类：
 
 - `JavaCoderNode`
 - `JavaReviewerNode`
 - `AlibabaReflectionFlowAgent`
 
-对应代码入口：
+代码入口：
 
 - `src/main/java/com/xbk/agent/framework/reflection/infrastructure/agentframework/node/JavaCoderNode.java`
 - `src/main/java/com/xbk/agent/framework/reflection/infrastructure/agentframework/node/JavaReviewerNode.java`
 - `src/main/java/com/xbk/agent/framework/reflection/infrastructure/agentframework/AlibabaReflectionFlowAgent.java`
 
-这一版的关键观察点是：
+这一版的关键点是：
 
-- `current_code`、`review_feedback`、`iteration_count` 都进入状态图
+- 直接使用 Spring AI `ChatModel`
+- 用 Spring AI Alibaba `FlowAgent` 封装状态图运行时
 - 节点只负责“读状态 -> 调模型 -> 写状态”
-- 是否继续优化不再由 `while` 写死，而是由条件边决定
-- 运行结果最终以 `OverAllState` 快照形式回放
+- 回环不再手写 `while`，而是通过条件边控制
+- 最终运行事实通过 `OverAllState` 回放
 
-换句话说，这一版里：
+图编排版里最关键的状态键有 3 个：
 
-**Java 代码主要在声明节点、状态键和路由规则，而不是亲自推进循环。**
+- `current_code`
+- `review_feedback`
+- `iteration_count`
 
-### 3. `ReflectionMemory` 与 `OverAllState` 的工程差异
+这说明图编排版最核心的工程变化不是“代码更短”，而是：
 
-这是两套实现最值得对照看的地方。
+**关键运行事实进入状态，而不是只藏在模型上下文里。**
 
-#### 手写版：`ReflectionMemory` 是显式历史容器
+## Spring AI / Spring AI Alibaba 在这里怎么落地
 
-在 `HandwrittenReflectionAgent` 中，每做完一轮评审，Java 代码都会：
+### 手写版：统一网关抽象，Spring AI 做底层适配
 
-1. 把当前代码和评审意见封装成 `ReflectionTurnRecord`
-2. 追加到 `ReflectionMemory`
-3. 下一轮再把旧代码和新反馈重新拼进 Prompt
+手写版业务代码依赖的是：
 
-这意味着：
+- `AgentLlmGateway`
+- `LlmRequest`
+- `LlmResponse`
 
-- 控制力最强
-- 每一轮上下文格式完全可控
-- 非常适合理解 Reflection 的底层闭环
-- 但流程复杂后，协调器会越来越像手写调度器
+但这不代表它脱离了 Spring AI。
 
-#### 图编排版：`OverAllState` 是状态图里的事实容器
+真实接入链路是：
 
-在 `AlibabaReflectionFlowAgent` 中：
+1. `framework-llm-autoconfigure` 读取统一 `llm.*` 配置
+2. 根据 `llm.provider` 自动选择 provider adapter
+3. `framework-llm-springai` 创建 Spring AI `ChatModel`
+4. `SpringAiLlmClient` 把统一请求转换成 Spring AI `Prompt`
+5. 最终由 `ChatModel.call(...)` 发起真实调用
 
-- `JavaCoderNode` 更新 `current_code`
-- `JavaReviewerNode` 更新 `review_feedback` 和 `iteration_count`
-- 条件边再根据这些状态判断下一步去哪里
+所以手写版的定位是：
 
-这意味着：
+- 范式层：用统一网关抽象
+- 模型接入层：仍然可以由 Spring AI 驱动
 
-- 阶段之间通过状态键交接，而不是靠手写字符串拼接
-- 路由逻辑和业务节点天然分离
-- 更适合扩展成更长的企业级编排链路
+### 图编排版：直接围绕 `ChatModel + StateGraph` 组织运行时
 
-## 理论背景
+图编排版更贴近 Spring AI Alibaba 的运行时模型：
 
-很多复杂任务的失败，并不是因为模型第一次完全不会做，而是因为：
+- `AlibabaReflectionFlowAgent` 负责定义 flow、compile config 和条件边
+- `JavaCoderNode` / `JavaReviewerNode` 实现 `AsyncNodeAction`
+- `OverAllState` 持有当前整张图的共享事实
+- 条件边根据 `review_feedback` 和 `iteration_count` 决定下一跳
 
-- 初稿存在结构性漏洞
-- 论证不够严谨
-- 工具调用链条虽然完成，但结果质量不够高
-- 输出看起来合理，但没有经过批判性审视
+当前实现里还保留了两个 `ReactAgent`：
 
-Reflection 范式正是把“批判者”显式引入系统中。
+- `java-reflection-coder-agent`
+- `java-reflection-reviewer-agent`
 
-它包含一个基本闭环：
+它们主要承担角色元数据和行为约束，例如：
 
-1. 生成初稿
-2. 站在严格评审者视角指出问题
-3. 基于问题修订答案
-4. 判断是否继续迭代或停止
+- agent 名称
+- agent 描述
+- `returnReasoningContents(false)`
 
-这让 Agent 不再满足于“一次生成”，而是具备“有限次数的自我纠错”能力。
+而真正节点执行则显式写在 `JavaCoderNode` / `JavaReviewerNode` 里，目的是让“状态如何映射到 prompt”更直观。
 
-## 与 framework-core 的关系
+## 与测试的对应关系
 
-Reflection 模块依赖 `framework-core` 的核心原因在于：  
-反思并不是字符串拼接，而是结构化状态流转。
+如果你想先看“这个模块到底保证了什么行为”，优先看：
 
-- `AgentLlmGateway`：驱动手写版生成者与评审者的统一调用
-- `Message / Memory`：保存每一轮草稿、评审意见、修订结果
-- 统一的 LLM 协议层：让手写版和 Spring AI 版都能围绕同一套调用约定组织代码
+- `src/test/java/com/xbk/agent/framework/reflection/ReflectionPrimeGenerationDemoTest.java`
 
-推荐实践是把“草稿”“评审意见”“修订版”“轮次计数”都作为显式状态，而不是隐藏在长 Prompt 中。
+这组测试同时钉住了两套实现：
+
+- 手写版必须完成“初稿 -> 评审 -> 优化 -> 再评审”
+- 图编排版必须通过条件边形成受控回环
+- 最终都要从暴力思路收敛到更优实现
+- reviewer 明确给出“无需改进”时，流程应停止
+
+这也是这个模块最好的阅读入口。
+
+## 真实 OpenAI Demo
+
+当前模块除了离线测试，还保留了两套真实模型对照 Demo：
+
+- `src/test/java/com/xbk/agent/framework/reflection/HandwrittenReflectionOpenAiDemo.java`
+- `src/test/java/com/xbk/agent/framework/reflection/AlibabaReflectionFlowOpenAiDemo.java`
+
+对应配置：
+
+- `src/test/resources/application-openai-reflection-demo.yml`
+- `src/test/resources/application-openai-reflection-demo-local.yml.example`
+- `src/test/resources/application-openai-reflection-demo-local.yml`
+
+运行真实 Demo 前，至少要准备两件事：
+
+1. 在本地配置文件里填入真实 `llm.api-key`
+2. 显式开启 `demo.reflection.openai.enabled=true`
+
+默认情况下，真实 Demo 会被安全跳过，避免日常测试误打外网。
+
+## 推荐阅读顺序
+
+如果你想顺着源码快速吃透，推荐顺序如下：
+
+1. 先看 `ReflectionPrimeGenerationDemoTest`
+2. 再看手写版
+   - `HandwrittenJavaCoder`
+   - `HandwrittenJavaReviewer`
+   - `ReflectionMemory`
+   - `HandwrittenReflectionAgent`
+3. 再看图编排版
+   - `JavaCoderNode`
+   - `JavaReviewerNode`
+   - `AlibabaReflectionFlowAgent`
+4. 最后看真实 Demo
+   - `OpenAiReflectionDemoPropertySupport`
+   - `OpenAiReflectionDemoTestConfig`
+   - `HandwrittenReflectionOpenAiDemo`
+   - `AlibabaReflectionFlowOpenAiDemo`
+
+这样看，你会更容易把：
+
+- 范式本体
+- 统一 LLM 抽象
+- Spring AI 模型接入
+- Spring AI Alibaba 图编排
+
+这 4 层真正串起来。
 
 ## 工程落地建议
 
-### 1. 评审者必须比生成者更苛刻
+### 1. reviewer 必须真的比 coder 更苛刻
 
-如果两个角色的提示词太接近，系统只是在重复生成，而不是反思。
+如果两个角色的 prompt 太像，系统只是在重复生成，不是在做 Reflection。
 
 ### 2. 停止条件必须显式
 
-Reflection 很容易陷入“越修越多”的成本黑洞。  
-必须设置上限，并允许在达到阈值后输出“当前最佳版本”。
+Reflection 最大的风险不是不会优化，而是无限优化。
+必须同时有业务停止条件和运行时保护条件。
 
-### 3. 状态键名要稳定
+### 3. 把关键事实写进 memory 或 state
 
-如果图编排版里的 `current_code`、`review_feedback`、`iteration_count` 经常变化，后续节点和测试都会变得脆弱。
+不要把“当前代码”“评审意见”“轮次计数”全部藏进长 prompt。
+一旦它们不能显式回放，调试和治理成本会迅速升高。
 
-### 4. 把反思用于高价值场景
+### 4. 把 Reflection 用在真正值得反思的问题上
 
-Reflection 适合高质量、高风险输出，不适合所有日常问答。  
-低价值任务引入反思，只会徒增成本与延迟。
+Reflection 适合高价值、高质量要求的任务；
+低价值任务一旦强行加 Reflection，往往只会增加成本和延迟。
+
+## 结论
+
+这个模块最重要的价值，不是多写了一套“评审后再改”的样例，而是把同一个 Reflection 闭环同时落成了两种 runtime：
+
+- 手写版：帮助你理解范式本体
+- 图编排版：帮助你理解工程化落地
+
+把这两套代码对照着看，才能真正看清 Reflection 在这个仓库里的完整位置。
