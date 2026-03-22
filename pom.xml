@@ -23,7 +23,7 @@
         <module>module-multi-agent-supervisor</module>
         <module>module-multi-agent-conversation</module>
         <module>module-multi-agent-engineering</module>
-        <module>module-multi-agent-camel</module>
+        <module>module-multi-agent-roleplay</module>
     </modules>
 
     <properties>
@@ -137,7 +137,7 @@
             </dependency>
             <dependency>
                 <groupId>${project.groupId}</groupId>
-                <artifactId>module-multi-agent-camel</artifactId>
+                <artifactId>module-multi-agent-roleplay</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>

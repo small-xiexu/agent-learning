@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 在 `module-multi-agent-camel` 中落地同一道“股票分析 Python 脚本开发”任务的两套 Java 实现，分别演示纯手写 CAMEL 协作运行时与基于 Spring AI Alibaba `FlowAgent + StateGraph + OverAllState` 的企业工程化交接回环，并且两套实现都统一使用现有 `AgentLlmGateway`。
+**Goal:** 在 `module-multi-agent-roleplay` 中落地同一道“股票分析 Python 脚本开发”任务的两套 Java 实现，分别演示纯手写 CAMEL 协作运行时与基于 Spring AI Alibaba `FlowAgent + StateGraph + OverAllState` 的企业工程化交接回环，并且两套实现都统一使用现有 `AgentLlmGateway`。
 
 **Architecture:** 手写版围绕 `交易员 -> 程序员 -> 交易员` 的显式 while 循环展开，手动维护共享对话 memory、路由和终止标记。框架版保留 `ReactAgent` 作为角色定义对象，用 `FlowAgent`、节点和条件边驱动活动角色切换，并通过最小共享状态而不是手工拼接大段历史来完成 handoff。
 
@@ -14,25 +14,25 @@
 
 ### Modify
 
-- `module-multi-agent-camel/pom.xml`
+- `module-multi-agent-roleplay/pom.xml`
 
 ### Create
 
-- `module-multi-agent-camel/src/main/java/com/xbk/agent/framework/camel/api/CamelRunResult.java`
-- `module-multi-agent-camel/src/main/java/com/xbk/agent/framework/camel/domain/role/CamelRoleType.java`
-- `module-multi-agent-camel/src/main/java/com/xbk/agent/framework/camel/domain/role/CamelRoleContract.java`
-- `module-multi-agent-camel/src/main/java/com/xbk/agent/framework/camel/domain/memory/CamelDialogueTurn.java`
-- `module-multi-agent-camel/src/main/java/com/xbk/agent/framework/camel/domain/memory/CamelConversationMemory.java`
-- `module-multi-agent-camel/src/main/java/com/xbk/agent/framework/camel/support/CamelPromptTemplates.java`
-- `module-multi-agent-camel/src/main/java/com/xbk/agent/framework/camel/support/CamelGatewayBackedChatModel.java`
-- `module-multi-agent-camel/src/main/java/com/xbk/agent/framework/camel/application/executor/CamelTraderAgent.java`
-- `module-multi-agent-camel/src/main/java/com/xbk/agent/framework/camel/application/executor/CamelProgrammerAgent.java`
-- `module-multi-agent-camel/src/main/java/com/xbk/agent/framework/camel/application/coordinator/HandwrittenCamelAgent.java`
-- `module-multi-agent-camel/src/main/java/com/xbk/agent/framework/camel/infrastructure/agentframework/AlibabaCamelFlowAgent.java`
-- `module-multi-agent-camel/src/main/java/com/xbk/agent/framework/camel/infrastructure/agentframework/node/CamelTraderHandoffNode.java`
-- `module-multi-agent-camel/src/main/java/com/xbk/agent/framework/camel/infrastructure/agentframework/node/CamelProgrammerHandoffNode.java`
-- `module-multi-agent-camel/src/test/java/com/xbk/agent/framework/camel/CamelStockAnalysisComparisonTest.java`
-- `module-multi-agent-camel/src/test/java/com/xbk/agent/framework/camel/config/OpenAiCamelDemoTestConfigTest.java`
+- `module-multi-agent-roleplay/src/main/java/com/xbk/agent/framework/camel/api/CamelRunResult.java`
+- `module-multi-agent-roleplay/src/main/java/com/xbk/agent/framework/camel/domain/role/CamelRoleType.java`
+- `module-multi-agent-roleplay/src/main/java/com/xbk/agent/framework/camel/domain/role/CamelRoleContract.java`
+- `module-multi-agent-roleplay/src/main/java/com/xbk/agent/framework/camel/domain/memory/CamelDialogueTurn.java`
+- `module-multi-agent-roleplay/src/main/java/com/xbk/agent/framework/camel/domain/memory/CamelConversationMemory.java`
+- `module-multi-agent-roleplay/src/main/java/com/xbk/agent/framework/camel/support/CamelPromptTemplates.java`
+- `module-multi-agent-roleplay/src/main/java/com/xbk/agent/framework/camel/support/CamelGatewayBackedChatModel.java`
+- `module-multi-agent-roleplay/src/main/java/com/xbk/agent/framework/camel/application/executor/CamelTraderAgent.java`
+- `module-multi-agent-roleplay/src/main/java/com/xbk/agent/framework/camel/application/executor/CamelProgrammerAgent.java`
+- `module-multi-agent-roleplay/src/main/java/com/xbk/agent/framework/camel/application/coordinator/HandwrittenCamelAgent.java`
+- `module-multi-agent-roleplay/src/main/java/com/xbk/agent/framework/camel/infrastructure/agentframework/AlibabaCamelFlowAgent.java`
+- `module-multi-agent-roleplay/src/main/java/com/xbk/agent/framework/camel/infrastructure/agentframework/node/CamelTraderHandoffNode.java`
+- `module-multi-agent-roleplay/src/main/java/com/xbk/agent/framework/camel/infrastructure/agentframework/node/CamelProgrammerHandoffNode.java`
+- `module-multi-agent-roleplay/src/test/java/com/xbk/agent/framework/camel/CamelStockAnalysisComparisonTest.java`
+- `module-multi-agent-roleplay/src/test/java/com/xbk/agent/framework/camel/config/OpenAiRolePlayDemoTestConfigTest.java`
 
 ## Design Constraints To Preserve During Implementation
 
@@ -48,7 +48,7 @@
 ### Task 1: 先补齐 roleplay 模块依赖
 
 **Files:**
-- Modify: `module-multi-agent-camel/pom.xml`
+- Modify: `module-multi-agent-roleplay/pom.xml`
 
 - [ ] **Step 1: 为模块加入与相邻范式一致的运行时依赖**
   目标：
@@ -63,7 +63,7 @@
 ### Task 2: 先写总测试骨架并让它失败
 
 **Files:**
-- Create: `module-multi-agent-camel/src/test/java/com/xbk/agent/framework/camel/CamelStockAnalysisComparisonTest.java`
+- Create: `module-multi-agent-roleplay/src/test/java/com/xbk/agent/framework/camel/CamelStockAnalysisComparisonTest.java`
 
 - [ ] **Step 1: 增加手写版失败测试**
   测试目标：
@@ -79,18 +79,18 @@
 
 - [ ] **Step 3: 运行测试确认因为类尚未创建而失败**
   建议命令：
-  `mvn -q -pl module-multi-agent-camel -am -Dtest=CamelStockAnalysisComparisonTest -Dsurefire.failIfNoSpecifiedTests=false test`
+  `mvn -q -pl module-multi-agent-roleplay -am -Dtest=CamelStockAnalysisComparisonTest -Dsurefire.failIfNoSpecifiedTests=false test`
 
 ## Chunk 2: 先实现手写版 CAMEL 最小闭环
 
 ### Task 3: 建立角色契约与对话内存模型
 
 **Files:**
-- Create: `module-multi-agent-camel/src/main/java/com/xbk/agent/framework/camel/domain/role/CamelRoleType.java`
-- Create: `module-multi-agent-camel/src/main/java/com/xbk/agent/framework/camel/domain/role/CamelRoleContract.java`
-- Create: `module-multi-agent-camel/src/main/java/com/xbk/agent/framework/camel/domain/memory/CamelDialogueTurn.java`
-- Create: `module-multi-agent-camel/src/main/java/com/xbk/agent/framework/camel/domain/memory/CamelConversationMemory.java`
-- Create: `module-multi-agent-camel/src/main/java/com/xbk/agent/framework/camel/support/CamelPromptTemplates.java`
+- Create: `module-multi-agent-roleplay/src/main/java/com/xbk/agent/framework/camel/domain/role/CamelRoleType.java`
+- Create: `module-multi-agent-roleplay/src/main/java/com/xbk/agent/framework/camel/domain/role/CamelRoleContract.java`
+- Create: `module-multi-agent-roleplay/src/main/java/com/xbk/agent/framework/camel/domain/memory/CamelDialogueTurn.java`
+- Create: `module-multi-agent-roleplay/src/main/java/com/xbk/agent/framework/camel/domain/memory/CamelConversationMemory.java`
+- Create: `module-multi-agent-roleplay/src/main/java/com/xbk/agent/framework/camel/support/CamelPromptTemplates.java`
 
 - [ ] **Step 1: 定义角色枚举和角色契约对象**
   要点：
@@ -117,7 +117,7 @@
 ### Task 4: 建立统一网关文本交换支撑类
 
 **Files:**
-- Create: `module-multi-agent-camel/src/main/java/com/xbk/agent/framework/camel/support/CamelGatewayBackedChatModel.java`
+- Create: `module-multi-agent-roleplay/src/main/java/com/xbk/agent/framework/camel/support/CamelGatewayBackedChatModel.java`
 
 - [ ] **Step 1: 封装 `AgentLlmGateway` 调用入口**
   要点：
@@ -133,8 +133,8 @@
 ### Task 5: 实现手写版两个角色执行器
 
 **Files:**
-- Create: `module-multi-agent-camel/src/main/java/com/xbk/agent/framework/camel/application/executor/CamelTraderAgent.java`
-- Create: `module-multi-agent-camel/src/main/java/com/xbk/agent/framework/camel/application/executor/CamelProgrammerAgent.java`
+- Create: `module-multi-agent-roleplay/src/main/java/com/xbk/agent/framework/camel/application/executor/CamelTraderAgent.java`
+- Create: `module-multi-agent-roleplay/src/main/java/com/xbk/agent/framework/camel/application/executor/CamelProgrammerAgent.java`
 
 - [ ] **Step 1: 实现交易员单轮发言逻辑**
   要点：
@@ -151,9 +151,9 @@
 ### Task 6: 实现手写版协调器
 
 **Files:**
-- Create: `module-multi-agent-camel/src/main/java/com/xbk/agent/framework/camel/api/CamelRunResult.java`
-- Create: `module-multi-agent-camel/src/main/java/com/xbk/agent/framework/camel/application/coordinator/HandwrittenCamelAgent.java`
-- Modify: `module-multi-agent-camel/src/test/java/com/xbk/agent/framework/camel/CamelStockAnalysisComparisonTest.java`
+- Create: `module-multi-agent-roleplay/src/main/java/com/xbk/agent/framework/camel/api/CamelRunResult.java`
+- Create: `module-multi-agent-roleplay/src/main/java/com/xbk/agent/framework/camel/application/coordinator/HandwrittenCamelAgent.java`
+- Modify: `module-multi-agent-roleplay/src/test/java/com/xbk/agent/framework/camel/CamelStockAnalysisComparisonTest.java`
 
 - [ ] **Step 1: 设计统一运行结果对象**
   要点：
@@ -185,8 +185,8 @@
 ### Task 7: 为框架版定义状态协议与角色元数据
 
 **Files:**
-- Create: `module-multi-agent-camel/src/main/java/com/xbk/agent/framework/camel/infrastructure/agentframework/AlibabaCamelFlowAgent.java`
-- Modify: `module-multi-agent-camel/src/test/java/com/xbk/agent/framework/camel/CamelStockAnalysisComparisonTest.java`
+- Create: `module-multi-agent-roleplay/src/main/java/com/xbk/agent/framework/camel/infrastructure/agentframework/AlibabaCamelFlowAgent.java`
+- Modify: `module-multi-agent-roleplay/src/test/java/com/xbk/agent/framework/camel/CamelStockAnalysisComparisonTest.java`
 
 - [ ] **Step 1: 设计图运行时状态键**
   必需状态：
@@ -213,8 +213,8 @@
 ### Task 8: 实现 handoff 节点
 
 **Files:**
-- Create: `module-multi-agent-camel/src/main/java/com/xbk/agent/framework/camel/infrastructure/agentframework/node/CamelTraderHandoffNode.java`
-- Create: `module-multi-agent-camel/src/main/java/com/xbk/agent/framework/camel/infrastructure/agentframework/node/CamelProgrammerHandoffNode.java`
+- Create: `module-multi-agent-roleplay/src/main/java/com/xbk/agent/framework/camel/infrastructure/agentframework/node/CamelTraderHandoffNode.java`
+- Create: `module-multi-agent-roleplay/src/main/java/com/xbk/agent/framework/camel/infrastructure/agentframework/node/CamelProgrammerHandoffNode.java`
 
 - [ ] **Step 1: 实现交易员 handoff 节点**
   要点：
@@ -236,8 +236,8 @@
 ### Task 9: 实现 `FlowAgent` 主体与条件边
 
 **Files:**
-- Modify: `module-multi-agent-camel/src/main/java/com/xbk/agent/framework/camel/infrastructure/agentframework/AlibabaCamelFlowAgent.java`
-- Modify: `module-multi-agent-camel/src/test/java/com/xbk/agent/framework/camel/CamelStockAnalysisComparisonTest.java`
+- Modify: `module-multi-agent-roleplay/src/main/java/com/xbk/agent/framework/camel/infrastructure/agentframework/AlibabaCamelFlowAgent.java`
+- Modify: `module-multi-agent-roleplay/src/test/java/com/xbk/agent/framework/camel/CamelStockAnalysisComparisonTest.java`
 
 - [ ] **Step 1: 在 `buildSpecificGraph(...)` 中创建 `TRADER_NODE` 和 `PROGRAMMER_NODE`**
 
@@ -269,7 +269,7 @@
 ### Task 10: 增加自动装配烟雾测试
 
 **Files:**
-- Create: `module-multi-agent-camel/src/test/java/com/xbk/agent/framework/camel/config/OpenAiCamelDemoTestConfigTest.java`
+- Create: `module-multi-agent-roleplay/src/test/java/com/xbk/agent/framework/camel/config/OpenAiRolePlayDemoTestConfigTest.java`
 
 - [ ] **Step 1: 参照相邻模块的配置测试，验证上下文内可获得 `AgentLlmGateway`**
 
@@ -278,19 +278,19 @@
 ### Task 11: 运行完整验证
 
 **Files:**
-- Verify: `module-multi-agent-camel`
+- Verify: `module-multi-agent-roleplay`
 
 - [ ] **Step 1: 运行对照测试类**
   建议命令：
-  `mvn -q -pl module-multi-agent-camel -am -Dtest=CamelStockAnalysisComparisonTest -Dsurefire.failIfNoSpecifiedTests=false test`
+  `mvn -q -pl module-multi-agent-roleplay -am -Dtest=CamelStockAnalysisComparisonTest -Dsurefire.failIfNoSpecifiedTests=false test`
 
 - [ ] **Step 2: 运行配置烟雾测试**
   建议命令：
-  `mvn -q -pl module-multi-agent-camel -am -Dtest=OpenAiCamelDemoTestConfigTest -Dsurefire.failIfNoSpecifiedTests=false test`
+  `mvn -q -pl module-multi-agent-roleplay -am -Dtest=OpenAiRolePlayDemoTestConfigTest -Dsurefire.failIfNoSpecifiedTests=false test`
 
 - [ ] **Step 3: 运行模块编译验证**
   建议命令：
-  `mvn -q -pl module-multi-agent-camel -am -DskipTests compile`
+  `mvn -q -pl module-multi-agent-roleplay -am -DskipTests compile`
 
 - [ ] **Step 4: 复核最终注释**
   要点：

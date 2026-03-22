@@ -13,12 +13,33 @@
 
     <artifactId>module-multi-agent-conversation</artifactId>
     <name>spring-ai-agent-framework :: module-multi-agent-conversation</name>
-    <description>多智能体对话模块，提供多智能体对话协同示例</description>
+    <description>多智能体群聊模块，提供 AutoGen RoundRobin 对话协作示例</description>
 
     <dependencies>
         <dependency>
             <groupId>com.xbk</groupId>
             <artifactId>framework-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.xbk</groupId>
+            <artifactId>framework-llm-autoconfigure</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.xbk</groupId>
+            <artifactId>framework-llm-springai</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba.cloud.ai</groupId>
+            <artifactId>spring-ai-alibaba-agent-framework</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 </project>

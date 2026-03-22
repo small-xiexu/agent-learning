@@ -210,7 +210,7 @@ flowchart LR
 
 ## 5. 这个模块里的两套实现，为什么都要保留
 
-`module-multi-agent-camel` 里现在有两条实现线。
+`module-multi-agent-roleplay` 里现在有两条实现线。
 
 ### 5.1 手写版
 
@@ -456,7 +456,7 @@ FlowAgent 版的重点不是“更高级的模型调用”，而是：
 
 **CAMEL 不是“多几个 Agent 一起聊天”，而是“先把角色边界和协作协议钉死，再让它们按规则接力完成任务”。**
 
-而 `module-multi-agent-camel` 的价值就在于：
+而 `module-multi-agent-roleplay` 的价值就在于：
 
 - 用手写版告诉你 CAMEL 原始 runtime 是怎么跑的
 - 用 FlowAgent 版告诉你企业里怎么把这套协作做成可维护的状态图

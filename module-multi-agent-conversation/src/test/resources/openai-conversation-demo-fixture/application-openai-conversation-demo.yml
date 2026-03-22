@@ -1,0 +1,14 @@
+spring:
+  config:
+    import: optional:application-openai-conversation-demo-local.yml
+
+llm:
+  provider: openai-compatible
+  base-url: https://api.openai.com
+  api-key:
+  model: gpt-4o
+
+demo:
+  conversation:
+    openai:
+      enabled: false
