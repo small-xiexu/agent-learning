@@ -259,16 +259,27 @@ public class AlibabaConversationFlowAgent extends FlowAgent {
      */
     @Override
     protected StateGraph buildSpecificGraph(FlowGraphBuilder.FlowGraphConfig config) throws GraphStateException {
+        // 先创建一张空状态图，后续把 RoundRobin 群聊的节点和边逐步装进去。
         StateGraph stateGraph = new StateGraph();
+        // 注册 ProductManager 节点，让流程从“拆需求、给下一步目标”开始。
         stateGraph.addNode(PRODUCT_MANAGER_NODE, new ProductManagerNode(agentLlmGateway, productManagerContract));
+        // 注册 Engineer 节点，让产品需求在下一步被转成最新完整脚本。
         stateGraph.addNode(ENGINEER_NODE, new EngineerNode(agentLlmGateway, engineerContract));
+        // 注册 CodeReviewer 节点，让工程产物在这一环被审查并决定是否继续。
         stateGraph.addNode(CODE_REVIEWER_NODE, new CodeReviewerNode(agentLlmGateway, codeReviewerContract));
+        // 从图起点进入 ProductManager，表示每轮群聊都先从需求分析开始。
         stateGraph.addEdge(StateGraph.START, PRODUCT_MANAGER_NODE);
+        // ProductManager 完成后固定流向 Engineer，表示下一步一定是实现阶段。
         stateGraph.addEdge(PRODUCT_MANAGER_NODE, ENGINEER_NODE);
+        // Engineer 完成后固定流向 Reviewer，表示代码产物必须经过审查。
         stateGraph.addEdge(ENGINEER_NODE, CODE_REVIEWER_NODE);
+        // 在 Reviewer 后面挂条件边，由审查结论决定是继续回环，还是直接结束整场群聊。
         stateGraph.addConditionalEdges(CODE_REVIEWER_NODE, nextFromCodeReviewer(), Map.of(
+                // 审查未通过时，回到 ProductManager，把阻塞意见继续翻译成下一轮任务目标。
                 "product_manager", PRODUCT_MANAGER_NODE,
+                // 审查通过或达到最大轮次时，直接进入图终点，停止后续协作。
                 "end", StateGraph.END));
+        // 返回构建完成的状态图，交给 FlowAgent runtime 在运行时编译并执行。
         return stateGraph;
     }
 
@@ -288,8 +299,11 @@ public class AlibabaConversationFlowAgent extends FlowAgent {
      * @return 是否停止
      */
     private boolean shouldStop(OverAllState state) {
+        // done 由 Reviewer 节点写入，表示当前任务是否已经被正式验收通过。
         boolean done = state.value("done", Boolean.class).orElse(Boolean.FALSE);
+        // turn_count 记录整场群聊已经推进了多少轮；如果状态里还没有这个值，就从 0 开始算。
         int turnCount = state.value("turn_count", Integer.class).orElse(Integer.valueOf(0));
+        // 只要“已经完成”或者“轮次达到上限”满足任意一个条件，就停止继续回环。
         return done || turnCount >= maxTurns;
     }
 

@@ -100,3 +100,8 @@ flowchart LR
 - 固定轮询怎么推进
 - 审查意见怎么回流到整个团队
 - 同一个范式如何分别用手写 runtime 和 Spring AI Alibaba 状态图落地
+
+## 延伸阅读
+
+- 顶层导读：[`docs/项目整体架构导读.md`](../docs/项目整体架构导读.md)
+- 专题导读：[`docs/AutoGen多智能体群聊与SpringAIAlibaba从0到1掌握指南.md`](../docs/AutoGen多智能体群聊与SpringAIAlibaba从0到1掌握指南.md)
