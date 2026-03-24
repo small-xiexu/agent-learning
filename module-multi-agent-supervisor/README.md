@@ -1,209 +1,217 @@
 # module-multi-agent-supervisor
 
+## 新手导航
+
+如果你是第一次接触这个模块，建议先读：
+
+- [Supervisor范式从0到1掌握指南](../docs/Supervisor范式从0到1掌握指南.md)
+
+这篇导读会优先把下面几件事讲清楚：
+
+- Supervisor 为什么不是“复杂版顺序流水线”
+- 手写版 Supervisor Loop 到底怎么维护全局控制权
+- Spring AI Alibaba 里的 `SupervisorAgent`、`ReactAgent`、`OverAllState` 分别承担什么职责
+- 本模块为什么要同时保留手写版和框架版
+- 真实 OpenAI Demo 需要哪些配置、怎么启动
+
+README 负责给你模块总览；专题导读负责把运行机制和框架实现过程讲透。
+
 ## 模块定位
 
-`module-multi-agent-supervisor` 用于承载“中心化监督者”多智能体协作范式。  
-它解决的不是“如何让多个 Agent 一起工作”这种宽泛问题，而是更具体的工程问题：
+`module-multi-agent-supervisor` 用于承载“中心化监督者”多智能体协作范式。
 
-- 当任务包含多个步骤时，谁负责全局协调
-- 子 Agent 做完之后，结果交给谁继续决策
-- 如何避免多 Agent 系统演化成失控的自由聊天
+它解决的不是“多个 Agent 一起聊天”这么宽泛的问题，而是下面这些更具体的工程问题：
 
-在 `spring-ai-agent-framework` 中，这个模块应被视为多智能体系统的“中控层”。  
-当任务需要全局拆解、统一调度、阶段性决策和多轮路由时，优先考虑 Supervisor，而不是让多个 Agent 自由竞争控制权。
+- 当任务包含多个步骤时，谁负责全局拆解与阶段性决策
+- 子 Agent 做完之后，结果回收到哪里继续判断下一步
+- 如何避免多 Agent 协作退化成失控的自由群聊
 
-## 🎯 最佳实践场景
+在 `spring-ai-agent-framework` 中，这个模块应被视为多智能体系统的“中控层”。
+当任务需要统一拆解、动态分发、阶段性收敛和多轮路由时，优先考虑 Supervisor，而不是让多个 Agent 自由竞争控制权。
 
-**企业级任务总调度（军机处模式）**：中心化 Supervisor 统筹全局，子专家处理完任务必须返回中心节点；所有的状态流转与决策大权始终收拢在中心“包工头”手中。
+## 最佳实践场景
 
-## 理论背景
+**企业级任务总调度**：由中心化 Supervisor 统筹全局，子专家处理完任务必须返回中心节点；状态流转、完成判断和终止权始终收拢在监督者手中。
 
-监督者范式的核心思想是：  
-复杂任务不直接交给某一个万能 Agent，也不完全交给去中心化群聊，而是由一个“监督者”负责在多个专业 Worker 之间进行集中路由与协调。
+## 模块里的最小对照样例
 
-它和其他多智能体范式的差异很清楚：
+当前模块用一条很适合 Supervisor 的最小闭环来做双实现对照：
 
-- 相比 `SequentialAgent`：监督者不是固定顺序，而是动态决策下一步应该交给谁
-- 相比 `Handoffs`：监督者不会永久放弃控制权，子 Agent 完成后会回到监督者继续决策
-- 相比单体 ReAct：监督者不直接做所有任务，而是负责拆解、委派、汇总与终止
+> 请以“Spring AI Alibaba的多智能体优势”为主题写一篇简短的博客，然后将其翻译成英文，最后对英文翻译进行语法和拼写审查。
 
-从 DDD 视角看，Supervisor 模式把“全局调度”从普通 Agent 行为中分离出来，形成一个独立的领域角色：
+这条任务之所以适合讲 Supervisor，是因为它天然满足三个条件：
 
-- `Supervisor`：全局路由与决策者
-- `Worker Agents`：专业能力执行者
-- `Routing Policy`：决定何时委派、何时继续、何时结束
+- 有清晰的分工边界：写作、翻译、审校
+- 每一阶段的结果都会影响下一阶段
+- 最终必须由中心节点判断是否 `FINISH`
 
-## 运行机制
+## 当前实现
 
-该模块建议采用“监督者循环”而不是“自由群聊”的运行模式。
+模块里现在有两套正式实现，而且两套都统一走 `AgentLlmGateway`：
 
-### 1. 接收目标
+- `HandwrittenSupervisorCoordinator`
+  手写版协调器，显式维护 Scratchpad、JSON 路由决策、Worker 分发和最大轮次控制。
+- `AlibabaSupervisorFlowAgent`
+  框架版协调器，使用 Spring AI Alibaba 原生 `SupervisorAgent + ReactAgent + OverAllState` 完成同一条多步监督闭环。
 
-监督者先接收用户输入或前序流程输出，并从当前状态判断任务属于：
+这两套实现解决的是同一件事，但学习重点不同：
 
-- 单步任务
-- 多步任务
-- 需要多个专业 Agent 协作的复合任务
+- 手写版回答：Supervisor 的最小 runtime 本体到底是什么
+- 框架版回答：Spring AI Alibaba 如何把中心化调度做成可执行的框架运行时
 
-### 2. 路由到子 Agent
+## 双实现总览
 
-监督者根据系统提示、指令模板和当前状态，动态选择最合适的 Worker Agent。
+### 1. 手写版 Supervisor Loop
 
-### 3. 子 Agent 执行
+核心类：
 
-被选中的 Worker Agent 执行自己的专业任务，例如：
+- `HandwrittenSupervisorCoordinator`
+- `WriterAgent`
+- `TranslatorAgent`
+- `ReviewerAgent`
+- `SupervisorScratchpad`
+- `SupervisorDecisionJsonParser`
+- `SupervisorWorkflowState`
 
-- 检索研究
-- 编码实现
-- 翻译润色
-- 审核评估
+这一版的关键点是：
 
-### 4. 返回监督者
+- `while` 循环由 Java 代码显式推进
+- Supervisor 每轮都基于 Scratchpad 和当前状态重新做决策
+- 子 Agent 完成任务后不会接管流程，而是把结果写回 Supervisor
+- `CompletionPolicy` 显式限制最大调度轮次
 
-Worker 执行完成后，结果不会直接结束流程，而是返回监督者。  
-监督者会继续判断：
+### 2. Spring AI Alibaba 原生 Supervisor 版
 
-- 是否还需要路由到其他 Agent
-- 是否已经满足完成条件
-- 是否需要直接返回 `FINISH`
+核心类：
 
-### 5. 循环终止
+- `AlibabaSupervisorFlowAgent`
+- `FrameworkSupervisorPromptTemplates`
+- `SupervisorGatewayBackedChatModel`
+- `SupervisorStateExtractor`
+- `SupervisorStateKeys`
 
-这套循环会持续到以下任一条件成立：
+这一版的关键点是：
 
-- 监督者判断任务已完成
-- 返回 `FINISH`
-- 达到最大循环次数
-- 外部治理策略要求停止
+- 用 `ReactAgent` 声明 writer、translator、reviewer 三个专业 Worker
+- 用 `SupervisorAgent` 负责中心化调度和多轮回环
+- 用 `outputKey` 和 `OverAllState` 交接阶段状态
+- 最终再把框架状态还原成统一的 `SupervisorRunResult`
 
-## Spring AI Alibaba 映射
+## Spring AI / Spring AI Alibaba 在这里怎么落地
 
-该模块与 Spring AI Alibaba 官方文档中的 `SupervisorAgent` 直接对应。
+### 手写版：统一网关抽象，Java 代码自己维护调度循环
 
-官方文档明确说明：
+手写版业务代码依赖的是：
 
-- `SupervisorAgent` 由 LLM 充当监督者，动态决定路由到哪个子 Agent
-- 它支持**多步骤循环路由**
-- 子 Agent 执行完成后会**返回监督者继续决策**
-- 监督者可以返回 `FINISH` 结束任务流程
+- `AgentLlmGateway`
+- `LlmRequest`
+- `LlmResponse`
+- `Message`
 
-这意味着 Supervisor 模式的本质不是“一次路由”，而是一个受控的多轮调度闭环。
+也就是说，这一版研究的重点是 Supervisor 本身的控制流，而不是框架语法糖。
 
-### 关键能力映射
+### 框架版：围绕 `SupervisorAgent + ReactAgent + OverAllState` 做中心化调度
 
-#### 1. `SupervisorAgent`
+框架版更贴近 Spring AI Alibaba 的企业级组织方式：
 
-这是模块的主执行抽象。  
-它负责集中式路由、阶段性决策和最终结束控制。
+- `writer_agent` 负责输出中文博客
+- `translator_agent` 负责输出英文译稿
+- `reviewer_agent` 负责输出最终审校稿
+- `supervisor_router_agent` 只负责判断下一跳或 `FINISH`
+- `SupervisorAgent` 负责把这些角色真正编排成多轮动态路由闭环
 
-#### 2. `systemPrompt`
+这个模块最重要的学习价值，不是“少写几行代码”，而是看清楚：
 
-监督者的系统提示不是普通人设描述，而是路由策略声明。  
-它应该明确：
+**Supervisor 的控制流如何从手写 `while` 循环提升成框架可执行的原生运行时。**
 
-- 有哪些可用子 Agent
-- 每个子 Agent 的职责边界
-- 什么情况下选择哪个 Agent
-- 什么情况下返回 `FINISH`
+## 与测试的对应关系
 
-#### 3. `instruction`
+如果你想先看“这个模块到底保证了什么行为”，优先看：
 
-官方文档说明 `SupervisorAgent` 支持在 `instruction` 中使用占位符读取前序 Agent 输出。  
-这使得监督者不仅能根据用户原始问题决策，还能根据流程中间结果继续做下一步调度。
+- `src/test/java/com/xbk/agent/framework/supervisor/SupervisorPatternComparisonTest.java`
 
-#### 4. 多步骤循环路由
+这组测试同时钉住了：
 
-这是 `SupervisorAgent` 与 `LlmRoutingAgent` 的关键差异。  
-官方文档明确指出：
+- 手写版必须完成 `WRITER -> TRANSLATOR -> REVIEWER -> FINISH` 闭环
+- 框架版必须完成同一条路由轨迹
+- 三阶段产物必须分别进入统一结果对象和框架状态
 
-- `LlmRoutingAgent` 只做单次路由
-- `SupervisorAgent` 支持子 Agent 返回监督者继续决策
+除此之外，模块还补了两类支撑测试：
 
-因此，本模块应面向复杂多步骤编排，而不是简单的一跳式分流。
+- `OpenAiSupervisorDemoPropertySupportTest`
+  验证真实 Demo 的配置读取、Key 判断和开关判断
+- `OpenAiSupervisorDemoTestConfigTest`
+  验证最小自动装配下可以得到 `AgentLlmGateway` 和 `ChatModel`
 
-### 与其他模式的工程边界
+## 真实 OpenAI Demo
 
-#### 与 `Handoffs` 的区别
+当前模块保留了两套真实模型 Demo：
 
-`Handoffs` 是去中心化控制权交接。  
-一旦交接，活动 Agent 就发生变化。
+- `src/test/java/com/xbk/agent/framework/supervisor/HandwrittenSupervisorOpenAiDemo.java`
+- `src/test/java/com/xbk/agent/framework/supervisor/AlibabaSupervisorFlowOpenAiDemo.java`
 
-而 `SupervisorAgent` 是中心化调度：  
-子 Agent 做完之后要返回监督者，监督者始终保有全局主导权。
+对应配置：
 
-#### 与 `SequentialAgent` 的区别
+- `src/test/resources/application-openai-supervisor-demo.yml`
+- `src/test/resources/application-openai-supervisor-demo-local.yml.example`
+- `src/test/resources/application-openai-supervisor-demo-local.yml`
 
-`SequentialAgent` 适合固定流水线；  
-`SupervisorAgent` 适合动态编排与条件性多步决策。
+运行真实 Demo 前至少要准备两件事：
 
-#### 与 Agent-as-Tool 的关系
+1. 在本地配置文件里填入真实 `llm.api-key`
+2. 显式开启 `demo.supervisor.openai.enabled=true`
 
-从架构上看，Supervisor 更接近中心化编排模式。  
-Worker 可以被理解为“受监督者调度的专业执行单元”，这和“Agent 作为工具”在控制流上是同一类思想，只是 Supervisor 额外提供了多轮循环决策能力。
+默认情况下，真实 Demo 会被安全跳过，避免日常测试误打外网。
 
-## 与 framework-core 的关系
+## 推荐阅读顺序
 
-`module-multi-agent-supervisor` 不应直接把业务状态塞进 Prompt，而应建立在 `framework-core` 协议之上：
+如果你想顺着源码快速吃透，推荐顺序如下：
 
-- `AgentLlmGateway`：统一监督者与 Worker 的模型调用入口
-- `Message / Memory`：统一保存监督者决策、Worker 输出与路由轨迹
-- `ToolRegistry`：让 Worker 具备专业工具能力
-
-建议在本模块内继续抽象以下核心概念：
-
-- `SupervisorContext`
-- `RoutingDecision`
-- `WorkerResult`
-- `CompletionPolicy`
-
-这样监督者不只是“一个 Prompt 很长的 Agent”，而是一个真正可治理的调度领域对象。
+1. 先看 `SupervisorPatternComparisonTest`
+2. 再看手写版
+   - `HandwrittenSupervisorCoordinator`
+   - `SupervisorScratchpad`
+   - `SupervisorDecisionJsonParser`
+   - `WriterAgent / TranslatorAgent / ReviewerAgent`
+3. 再看框架版
+   - `AlibabaSupervisorFlowAgent`
+   - `FrameworkSupervisorPromptTemplates`
+   - `SupervisorGatewayBackedChatModel`
+   - `SupervisorStateExtractor`
+4. 最后看真实 Demo 和配置支撑类
+   - `HandwrittenSupervisorOpenAiDemo`
+   - `AlibabaSupervisorFlowOpenAiDemo`
+   - `OpenAiSupervisorDemoPropertySupport`
 
 ## 工程落地建议
 
 ### 1. 监督者负责决策，不负责微观执行
 
-如果监督者自己也去做大量具体任务，它很快就会退化成一个“又要调度、又要干活”的上帝 Agent。
+如果 Supervisor 自己也做大量具体工作，它很快就会退化成一个“又要调度、又要干活”的上帝 Agent。
 
-### 2. 子 Agent 职责要正交
+### 2. 子 Agent 职责必须正交
 
-监督者路由质量很大程度取决于子 Agent 的边界是否清楚。  
-角色越模糊，监督者越容易反复试错。
+Supervisor 路由质量很大程度取决于子 Agent 的边界是否清楚。角色越模糊，监督者越容易反复试错。
 
-### 3. 明确 `FINISH` 语义
+### 3. `FINISH` 必须有清晰语义
 
-`FINISH` 不应只是“看起来差不多了”。  
-它应该对应清晰的完成条件，例如：
+`FINISH` 不应该是“看起来差不多了”，而应该对应明确的完成条件：
 
-- 所有必需子任务已完成
-- 最终结果已被组装
+- 所有必要子任务已经完成
+- 最终结果已经收敛
 - 不再需要进一步路由
 
-### 4. 限制最大循环次数
+### 4. 必须限制最大循环次数
 
-Supervisor 模式天然适合多步任务，但也天然有循环膨胀风险。  
-必须引入最大调度轮数和失败退出策略。
-
-### 5. 路由规则尽量显式化
-
-监督者的 `systemPrompt` 应像调度策略文档，而不是泛泛的角色说明。  
-越明确，路由越稳定。
-
-## 适用场景与边界
-
-### 适用场景
-
-- 多步骤复杂任务编排
-- 需要中心化全局控制的多 Agent 系统
-- 需要在多个专业 Worker 之间动态切换的任务
-
-### 不适合的场景
-
-- 只需固定顺序执行的简单流水线
-- 更适合去中心化自由接管的群聊场景
-- 低延迟、一步完成的小任务
+Supervisor 模式天然适合复杂多步任务，但也天然有回环膨胀风险。无论是手写版还是框架版，都应显式设置最大调度轮次和失败退出策略。
 
 ## 结论
 
-监督者范式的本质，不是“多加一个总控 Agent”，而是把多智能体系统中的全局治理能力显式工程化。
+`module-multi-agent-supervisor` 的价值，不是“再多加一个总控 Agent”，而是把多智能体系统里的全局治理能力显式工程化。
 
-在本项目中，`module-multi-agent-supervisor` 应承担中心化编排与多步循环决策的角色，作为多智能体体系里连接“专业 Worker”与“全局目标达成”的关键枢纽。
+在本项目中，它承担的是“中心化编排与多轮受控收敛”的角色，是连接专业 Worker 与全局目标达成的关键枢纽。
+
+## 延伸阅读
+
+- 顶层导读：[`docs/项目整体架构导读.md`](../docs/项目整体架构导读.md)
+- 专题导读：[`docs/Supervisor范式从0到1掌握指南.md`](../docs/Supervisor范式从0到1掌握指南.md)

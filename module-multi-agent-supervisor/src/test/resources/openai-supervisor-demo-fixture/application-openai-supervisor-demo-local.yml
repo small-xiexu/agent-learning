@@ -1,0 +1,7 @@
+llm:
+  api-key: fixture-supervisor-key
+
+demo:
+  supervisor:
+    openai:
+      enabled: true
