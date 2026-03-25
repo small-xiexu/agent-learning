@@ -20,9 +20,27 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Engineer 节点
+ * Engineer 节点（框架版 AutoGen 群聊）
  *
- * 职责：读取共享群聊历史，输出最新完整 Python 脚本，并写回同一份 shared_messages
+ * 职责：读取 OverAllState 中的共享群聊历史，扮演工程师角色输出最新完整 Python 脚本，
+ * 将发言追加回 shared_messages 和 transcript，推动 RoundRobin 轮转到 CodeReviewerNode。
+ *
+ * <p>在 AutoGen 群聊范式中的定位：
+ * Engineer 是群聊中唯一有权产出"完整 Python 脚本"的节点。
+ * 每一轮无论修改多少，都必须输出包含所有功能的完整脚本，而不是增量补丁，
+ * 这保证了 CodeReviewer 每轮看到的都是可独立运行的完整代码。
+ *
+ * <p>与手写版 EngineerAgent 的对照：
+ * <pre>
+ *   手写版 EngineerAgent.execute(history, task, conversationId)：
+ *     → 接收历史列表参数，返回本轮代码字符串
+ *     → 代码清洗（stripCodeFence）在调用方完成
+ *
+ *   框架版 EngineerNode.apply(OverAllState state)：
+ *     → 从 OverAllState 读取 shared_messages，自己调用 normalizePythonScript 清洗
+ *     → 额外维护 current_python_script 字段，便于最终结果直接提取最新完整脚本
+ *     → 返回增量 Map，框架 merge 进全局状态
+ * </pre>
  *
  * @author xiexu
  */

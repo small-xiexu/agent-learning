@@ -52,3 +52,7 @@ module-plan-replan-paradigm/src/test/resources/application-openai-plan-solve-dem
 module-reflection-paradigm/src/test/resources/application-openai-reflection-demo-local.yml
 module-multi-agent-conversation/src/test/resources/application-openai-conversation-demo-local.yml
 module-multi-agent-supervisor/src/test/resources/application-openai-supervisor-demo-local.yml
+module-graph-flow-paradigm/src/test/resources/application-openai-graph-demo-local.yml
+
+### Local Tool Config ###
+.claude/

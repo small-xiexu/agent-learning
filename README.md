@@ -183,6 +183,7 @@ agent-learning/
 
 ### 配套导读入口
 
+- `module-graph-flow-paradigm`：详见《[Graph Flow 范式从 0 到 1 掌握指南](./docs/GraphFlow范式从0到1掌握指南.md)》
 - `module-multi-agent-conversation`：详见《[AutoGen 范式从 0 到 1 掌握指南](./docs/AutoGen范式从0到1掌握指南.md)》
 - `module-multi-agent-supervisor`：详见《[Supervisor 范式从 0 到 1 掌握指南](./docs/Supervisor范式从0到1掌握指南.md)》
 - 框架版通用组件（ReactAgent / SupervisorAgent / OverAllState / StateGraph 等）：详见《[Spring AI Alibaba 框架核心组件指南](./docs/SpringAIAlibaba框架核心组件指南.md)》

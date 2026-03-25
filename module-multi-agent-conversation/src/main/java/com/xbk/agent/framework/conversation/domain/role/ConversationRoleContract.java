@@ -5,7 +5,26 @@ import com.xbk.agent.framework.conversation.support.ConversationPromptTemplates;
 /**
  * 群聊角色契约
  *
- * 职责：集中封装群聊角色的名称、职责说明、系统提示和输出键
+ * 职责：将一个群聊角色的全部稳定约束集中封装在一个对象里——
+ * 包括名称、职责描述、系统提示词和状态输出键，
+ * 使 RoundRobinGroupChat（手写版）和各 Node 类（框架版）都能以统一方式引用角色定义。
+ *
+ * <p>为什么需要"契约"这个概念：
+ * 群聊中每个角色的系统提示、输出键等定义在手写版和框架版中都要用到，
+ * 如果直接在各执行器和节点类里硬编码，一旦修改某个角色的 Prompt 就需要改多处。
+ * 契约对象将角色定义集中到一处，执行器和节点只持有契约引用，实现"定义一次、多处复用"。
+ *
+ * <p>各字段在双版本中的用途：
+ * <pre>
+ *   agentName   → 框架版 ReactAgent.builder().name(contract.getAgentName())
+ *               → 手写版日志和 Message.name 字段
+ *
+ *   systemPrompt → 手写版构建 SYSTEM 消息时使用
+ *                → 框架版 ReactAgent.builder().systemPrompt(contract.getSystemPrompt())
+ *
+ *   outputKey   → 框架版 ReactAgent.builder().outputKey(contract.getOutputKey())
+ *               → 框架版状态里该角色产出的 key 名称
+ * </pre>
  *
  * @author xiexu
  */

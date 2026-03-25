@@ -138,6 +138,66 @@ Graph Flow 模块仍然应站在 `framework-core` 的协议之上，而不是绕
 
 流程图不是为了“更酷”，而是为了让流程路径可追踪、可调试、可回放。
 
+## 与测试的对应关系
+
+如果你想先看“这个模块到底保证了什么行为”，优先看：
+
+- `src/test/java/com/xbk/agent/framework/graphflow/GraphFlowDemoTest.java`
+
+这组测试同时钉住了两类路径：
+
+- 手写版必须完成 `Understand -> Search(成功) -> Answer`
+- 手写版必须在搜索失败时切到 `Fallback`
+- 框架版必须完成同样的成功分支与失败分支
+- 最终回答、搜索关键词和状态字段都必须进入统一结果对象
+
+除此之外，模块还补了两类配置支撑测试：
+
+- `OpenAiGraphDemoPropertySupportTest`
+  验证真实 Demo 的配置模板、本地覆盖、Key 判断和开关判断
+- `OpenAiGraphDemoTestConfigTest`
+  验证最小自动装配下可以得到 `AgentLlmGateway` 与 `ChatModel`
+
+## 真实 OpenAI Demo
+
+当前模块除了离线桩测试，也保留了两套真实模型对照 Demo：
+
+- `src/test/java/com/xbk/agent/framework/graphflow/HandwrittenGraphFlowOpenAiDemo.java`
+- `src/test/java/com/xbk/agent/framework/graphflow/AlibabaGraphFlowOpenAiDemo.java`
+
+对应配置：
+
+- `src/test/resources/application-openai-graph-demo.yml`
+- `src/test/resources/application-openai-graph-demo-local.yml.example`
+- `src/test/resources/application-openai-graph-demo-local.yml`
+
+运行真实 Demo 前，至少要准备两件事：
+
+1. 在本地配置文件里填入真实 `llm.api-key`
+2. 显式开启 `demo.graph.openai.enabled=true`
+
+默认情况下，真实 Demo 会被安全跳过，避免日常测试误打外网。
+
+## 推荐阅读顺序
+
+如果你想顺着源码快速吃透，推荐顺序如下：
+
+1. 先看 `GraphFlowDemoTest`
+2. 再看手写版
+   - `GraphState`
+   - `StepStatus`
+   - `GraphRunner`
+   - `UnderstandNode / SearchNode / AnswerNode / FallbackNode`
+3. 再看框架版
+   - `AlibabaGraphFlowAgent`
+   - `SearchResultEdgeRouter`
+   - `UnderstandNodeAction / SearchNodeAction / AnswerNodeAction / FallbackNodeAction`
+4. 最后看真实 Demo 与配置支撑
+   - `OpenAiGraphDemoPropertySupport`
+   - `OpenAiGraphDemoTestConfig`
+   - `HandwrittenGraphFlowOpenAiDemo`
+   - `AlibabaGraphFlowOpenAiDemo`
+
 ## 适用场景与边界
 
 ### 适用场景
@@ -156,3 +216,8 @@ Graph Flow 模块仍然应站在 `framework-core` 的协议之上，而不是绕
 Graph Flow 的价值不在于“它比 ReAct 高级”，而在于它让复杂流程从隐式逻辑变成显式结构。
 
 在本项目中，`module-graph-flow-paradigm` 应承担复杂编排底座的角色，是从 Agent 走向 Workflow 和状态机系统的关键桥梁。
+
+## 延伸阅读
+
+- 专题导读：[`../docs/GraphFlow范式从0到1掌握指南.md`](../docs/GraphFlow范式从0到1掌握指南.md)
+- 框架通用组件：[`../docs/SpringAIAlibaba框架核心组件指南.md`](../docs/SpringAIAlibaba框架核心组件指南.md)

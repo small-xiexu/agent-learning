@@ -20,9 +20,31 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * ProductManager 节点
+ * ProductManager 节点（框架版 AutoGen 群聊）
  *
- * 职责：读取共享群聊历史，生成下一步产品需求，并写回同一份 shared_messages
+ * 职责：读取 OverAllState 中的共享群聊历史，扮演产品经理角色生成下一步需求指令，
+ * 将发言追加回 shared_messages 和 transcript，推动 RoundRobin 轮转到 EngineerNode。
+ *
+ * <p>在 AutoGen 群聊范式中的定位：
+ * <pre>
+ *   ProductManagerNode → EngineerNode → CodeReviewerNode ─┐
+ *          ↑                                               │ 条件边：done=false 时回环
+ *          └───────────────────────────────────────────────┘
+ * </pre>
+ * ProductManager 是群聊的起点和每轮回环的重入点：
+ * 第一轮负责理解初始任务并拆解，后续轮负责根据 Reviewer 意见细化需求或调整方向。
+ *
+ * <p>与手写版 ProductManagerAgent 的对照：
+ * <pre>
+ *   手写版 ProductManagerAgent.execute(history, task, conversationId)：
+ *     → 接收完整历史列表参数，返回本轮输出字符串
+ *     → 调用方（RoundRobinGroupChat）负责把输出追加进 ConversationMemory
+ *
+ *   框架版 ProductManagerNode.apply(OverAllState state)：
+ *     → 从 OverAllState 读取 shared_messages，本节点负责自己追加并写回
+ *     → 返回增量 Map，框架自动 merge 进全局状态
+ *     → 不需要调用方维护状态，节点本身是状态读写的责任人
+ * </pre>
  *
  * @author xiexu
  */

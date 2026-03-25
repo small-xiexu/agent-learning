@@ -5,7 +5,36 @@ import com.xbk.agent.framework.roleplay.support.CamelPromptTemplates;
 /**
  * CAMEL 角色契约
  *
- * 职责：集中封装角色名称、系统提示和输出键等稳定约束
+ * 职责：将一个 CAMEL 角色的全部稳定约束——名称、系统提示、输出键——集中封装在一个对象里，
+ * 使手写版执行器和框架版节点都能以统一方式引用角色定义，避免定义散落多处。
+ *
+ * <p>CAMEL 契约的核心设计原则：
+ * CAMEL（Communicative Agents for Mind Exploration of Large Language Models）范式的
+ * 核心是"角色扮演协议"——每个角色在整个对话中必须严格遵守其系统提示所约定的行为边界。
+ * 契约对象将这些约束固化，防止执行器或节点在运行中随意覆盖角色定义。
+ * <pre>
+ *   交易员契约（traderContract）：
+ *     → 约束"只提需求、只做验收、不写代码"
+ *     → 是 CAMEL 中负责业务控制和结束判断的一侧
+ *     → 只有交易员有权输出结束标记终止对话
+ *
+ *   程序员契约（programmerContract）：
+ *     → 约束"只根据上一条需求写一段代码"
+ *     → 是 CAMEL 中负责产出实现的一侧
+ *     → 即使程序员违规输出了结束标记，框架版会将其剥离
+ * </pre>
+ *
+ * <p>各字段在双版本中的用途：
+ * <pre>
+ *   systemPrompt → 手写版：构建 SYSTEM 消息传入 LLM，强约束角色行为
+ *                → 框架版：ReactAgent.builder().systemPrompt(contract.getSystemPrompt())
+ *
+ *   outputKey   → 框架版：ReactAgent.builder().outputKey(contract.getOutputKey())
+ *               → OverAllState 中该角色产出内容的 key 名称
+ *
+ *   agentName   → 框架版：ReactAgent.builder().name(contract.getAgentName())
+ *               → Message.name 字段，标识发言者身份
+ * </pre>
  *
  * @author xiexu
  */

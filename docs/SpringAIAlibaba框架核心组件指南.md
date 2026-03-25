@@ -76,138 +76,504 @@ ReactAgent agent = ReactAgent.builder()
 | --- | --- | --- | --- |
 | `name` | String | 是 | Agent 唯一标识，用于日志、调试、框架内路由 |
 | `description` | String | 是 | 职责描述，Supervisor 靠这个决定"该派谁" |
-| `model` | ChatModel | 是 | 底层模型实例，项目里统一用 `SupervisorGatewayBackedChatModel` 适配 |
-| `systemPrompt` | String | 否 | 角色设定，固定不变，详见 2.2 节 |
-| `instruction` | String | 否 | 任务指令，支持 `{key}` 占位符动态替换，详见 2.3 节 |
-| `outputKey` | String | 否 | Agent 输出写入 `OverAllState` 的键名，详见 2.4 节 |
+| `model` | ChatModel | 是 | 底层模型实例，项目里通常用 `*GatewayBackedChatModel` 适配统一网关 |
+| `systemPrompt` | String | 否 | 角色设定，固定不变，详见 2.5 节 |
+| `instruction` | String | 否 | 任务指令，支持 `{key}` 占位符动态替换，详见 2.6 节 |
+| `outputKey` | String | 否 | Agent 输出写入 `OverAllState` 的键名，详见 2.7 节 |
 | `methodTools` | Object | 否 | 绑定带 `@Tool` 注解的 Java 对象，详见第 6 节 |
 | `saver` | Saver | 否 | 状态持久化实现，详见第 7 节 |
-| `includeContents` | boolean | 否 | 是否继承父流程的消息历史，默认 `true`；设为 `false` 可避免上下文污染 |
-| `returnReasoningContents` | boolean | 否 | 是否返回 LLM 的思维链过程，生产环境通常关闭 |
+| `includeContents` | boolean | 否 | 是否继承父流程的消息历史，默认 `true`；设为 `false` 可避免上下文污染，详见 2.10 节 |
+| `returnReasoningContents` | boolean | 否 | 是否返回 LLM 的思维链过程，生产环境通常关闭，详见 2.11 节 |
 
 ---
 
-### 2.2 `systemPrompt` vs `instruction`：两者有什么区别？
+### 2.2 `name`：Agent 在图里的唯一标识
 
-这是最容易混淆的地方，一句话区分：
+#### 作用
 
-> `systemPrompt` 是"入职培训手册"（角色设定，固定不变）；`instruction` 是"每次开会的任务单"（动态内容，支持占位符）。
+`name` 是 Agent 在框架运行时的唯一名字。它不是单纯给人看的注释，而是会参与日志打印、调试定位、框架内部节点命名，以及某些场景下的路由匹配。
 
-#### 对应 LLM 的消息角色
+如果把 `ReactAgent` 类比成 Spring 容器里的 Bean，`name` 就像这个 Bean 在图运行时的逻辑名称。
+
+#### 默认行为与设置建议
+
+- `name` 是必填字段，不设置通常无法完成 Builder 构建
+- 同一张图里不要给两个 Agent 配相同的 `name`
+- 建议使用稳定、能表达职责的名字，而不是 `agent1`、`workerA` 这类临时命名
+
+#### 本项目示例
+
+Supervisor 模块里四个 Agent 的名字都直接表达职责：
+
+```java
+.name("writer_agent")
+.name("translator_agent")
+.name("reviewer_agent")
+.name("supervisor_router_agent")
+```
+
+这些名字定义在 [AlibabaSupervisorFlowAgent.java](/Users/xiexu/xiaofu/agent-learning/module-multi-agent-supervisor/src/main/java/com/xbk/agent/framework/supervisor/framework/agent/AlibabaSupervisorFlowAgent.java)。
+
+#### 扩展示例
+
+如果你在做客服场景，可以这样命名：
+
+```java
+ReactAgent classifier = ReactAgent.builder()
+    .name("ticket_classifier_agent")
+    .description("负责识别工单类别")
+    .model(chatModel)
+    .build();
+```
+
+#### 常见误解
+
+- `name` 不是写给 LLM 的提示词，LLM 真正看到的角色语义主要来自 `description`、`systemPrompt`、`instruction`
+- `name` 也不等于状态键，状态键由 `outputKey` 决定
+
+---
+
+### 2.3 `description`：给路由器和人类看的职责说明
+
+#### 作用
+
+`description` 用来描述这个 Agent 的职责边界。对于单 Agent 场景，它主要提高可读性；对于 Supervisor 这类中心化调度场景，它还会直接影响主路由 Agent 对“该派谁”的理解。
+
+你可以把它理解成“岗位说明书”。
+
+#### 默认行为与设置建议
+
+- `description` 是必填字段
+- 建议用一句话说清“这个 Agent 负责什么，不负责什么”
+- 描述应该聚焦职责，不要把整段执行步骤都塞进去
+
+#### 本项目示例
+
+Supervisor 的翻译 Agent 和审校 Agent 分工非常明确：
+
+```java
+.description("把中文博客翻译成英文")
+.description("对英文译文做语法和拼写审校")
+```
+
+对应代码见 [AlibabaSupervisorFlowAgent.java](/Users/xiexu/xiaofu/agent-learning/module-multi-agent-supervisor/src/main/java/com/xbk/agent/framework/supervisor/framework/agent/AlibabaSupervisorFlowAgent.java)。
+
+#### 扩展示例
+
+如果你希望一个 Agent 只做 SQL 审核而不执行 SQL，可以这样写：
+
+```java
+.description("只负责审查 SQL 风险，不执行任何数据库写操作")
+```
+
+#### 常见误解
+
+- `description` 不是普通注释，在多 Agent 协作里它往往是路由语义的一部分
+- `description` 也不能替代 `systemPrompt`，前者是概括职责，后者是细化行为规则
+
+---
+
+### 2.4 `model`：这个 Agent 到底调用哪个大模型
+
+#### 作用
+
+`model` 决定 `ReactAgent` 背后的模型节点最终调用哪个 `ChatModel`。这是 Agent 触达大模型的直接入口。
+
+从框架视角看，`ReactAgent` 不直接依赖你的 `AgentLlmGateway`，而是要求注入 `ChatModel`。因此项目里普遍多做了一层适配器：把统一的 `AgentLlmGateway` 包装成框架要求的 `ChatModel`。
+
+#### 默认行为与设置建议
+
+- `model` 是必填字段
+- 同一个流程里多个 Agent 通常可以共享同一个 `ChatModel`
+- 如果你希望不同 Agent 使用不同模型，也可以分别注入不同 `ChatModel`
+
+#### 本项目示例
+
+Supervisor 模块通过 `SupervisorGatewayBackedChatModel` 把统一网关适配成 `ChatModel`：
+
+```java
+this(agentLlmGateway, new SupervisorGatewayBackedChatModel(agentLlmGateway), maxRounds);
+```
+
+然后再把这个 `chatModel` 注入每个 `ReactAgent`：
+
+```java
+.model(chatModel)
+```
+
+适配器实现见 [SupervisorGatewayBackedChatModel.java](/Users/xiexu/xiaofu/agent-learning/module-multi-agent-supervisor/src/main/java/com/xbk/agent/framework/supervisor/framework/support/SupervisorGatewayBackedChatModel.java)。
+
+Conversation 和 CAMEL 模块也采用了同样思路，分别对应：
+
+- [ConversationGatewayBackedChatModel.java](/Users/xiexu/xiaofu/agent-learning/module-multi-agent-conversation/src/main/java/com/xbk/agent/framework/conversation/support/ConversationGatewayBackedChatModel.java)
+- [CamelGatewayBackedChatModel.java](/Users/xiexu/xiaofu/agent-learning/module-multi-agent-roleplay/src/main/java/com/xbk/agent/framework/roleplay/support/CamelGatewayBackedChatModel.java)
+
+#### 扩展示例
+
+如果你想让“规划 Agent”用更强模型、“执行 Agent”用更便宜模型，可以这样拆：
+
+```java
+ReactAgent planner = ReactAgent.builder()
+    .name("planner")
+    .description("负责复杂规划")
+    .model(expensiveChatModel)
+    .build();
+
+ReactAgent executor = ReactAgent.builder()
+    .name("executor")
+    .description("负责按计划执行")
+    .model(cheapChatModel)
+    .build();
+```
+
+#### 常见误解
+
+- `model` 不是模型名称字符串，而是已经构造好的 `ChatModel` 实例
+- 在本项目里，不建议让业务模块直接依赖厂商 SDK，而是应继续通过 `AgentLlmGateway -> *GatewayBackedChatModel` 这条边界接入
+
+---
+
+### 2.5 `systemPrompt`：长期稳定的角色设定
+
+#### 作用
+
+`systemPrompt` 用来告诉 LLM：“你是谁，你长期遵循什么规则。”
+它对应的是 system 角色消息，适合放角色身份、输出边界、行为禁令等“每次调用都不变”的内容。
+
+可以把它理解成“入职培训手册”。
+
+#### 默认行为与设置建议
+
+- 可选字段
+- 适合放固定规则，不适合放每轮都变化的任务上下文
+- 如果 Agent 的行为边界很明确，建议显式设置
+
+#### 本项目示例
+
+Supervisor 的主路由 Agent 把固定规则全部写在 `systemPrompt` 里，例如“你只负责决定下一跳”“必须返回 JSON 数组”等。具体模板见：
+[FrameworkSupervisorPromptTemplates.java](/Users/xiexu/xiaofu/agent-learning/module-multi-agent-supervisor/src/main/java/com/xbk/agent/framework/supervisor/framework/prompt/FrameworkSupervisorPromptTemplates.java)
+
+注入位置见：
+[AlibabaSupervisorFlowAgent.java](/Users/xiexu/xiaofu/agent-learning/module-multi-agent-supervisor/src/main/java/com/xbk/agent/framework/supervisor/framework/agent/AlibabaSupervisorFlowAgent.java)
+
+#### 扩展示例
+
+```java
+.systemPrompt("""
+    你是一名资深 SQL 审核员。
+    你只能指出风险和修改建议，不允许生成执行结果伪造数据。
+    输出必须使用中文项目符号列表。
+    """)
+```
+
+#### 与 `instruction` 的区别
 
 | 属性 | 发给 LLM 的消息类型 | 支持 `{}` 占位符 | 每轮变化 |
 | --- | --- | --- | --- |
 | `systemPrompt` | `SystemMessage`（system 角色） | 否 | 不变 |
-| `instruction` | `UserMessage`（user 角色） | **是** | 每轮动态渲染 |
+| `instruction` | `UserMessage`（user 角色） | 是 | 每轮动态渲染 |
 
-#### 实际例子（`supervisor_router_agent`）
+#### 常见误解
 
-```java
-// systemPrompt：告诉 LLM "你是谁，你的行为准则是什么"
-// 每次调用都一样，LLM 靠这个维持角色稳定
-systemPrompt:
-    "你是中心化 Supervisor 的主路由 Agent。
-     你只负责决定下一步应该调用哪个子 Agent。
-     你必须严格只返回 JSON 数组，严禁输出解释..."
-
-// instruction：告诉 LLM "这一轮具体的上下文和任务是什么"
-// {writer_output} 等占位符会在每轮执行时从 OverAllState 里取值填入
-instruction:
-    "原始任务：{input}
-     当前状态：
-     writer_output={writer_output}
-     translator_output={translator_output}
-     reviewer_output={reviewer_output}
-     路由规则：..."
-```
+- 不要把动态状态塞进 `systemPrompt`
+- 不要用它替代 `description`，两者面向的对象不同：前者面向 LLM，后者更多面向框架语义和人类理解
 
 ---
 
-### 2.3 `instruction` 占位符替换原理
+### 2.6 `instruction`：每一轮执行时的任务单
+
+#### 作用
+
+`instruction` 是发给 LLM 的当前任务说明。它通常会结合 `OverAllState` 里的状态键，通过 `{key}` 占位符动态渲染成每轮不同的用户消息。
+
+如果说 `systemPrompt` 是“长期规则”，那 `instruction` 就是“这一次具体要做什么”。
+
+#### 默认行为与设置建议
+
+- 可选字段
+- 适合放动态任务、上游输出、当前状态快照
+- 如果 Agent 需要读取上游结果，通常就应该显式设置 `instruction`
+
+#### 本项目示例
+
+Supervisor 路由 Agent 的 `instruction` 会读取 `writer_output`、`translator_output`、`reviewer_output` 来判断下一跳，模板见：
+[FrameworkSupervisorPromptTemplates.java](/Users/xiexu/xiaofu/agent-learning/module-multi-agent-supervisor/src/main/java/com/xbk/agent/framework/supervisor/framework/prompt/FrameworkSupervisorPromptTemplates.java)
+
+Reflection 模块里的 coder / reviewer 也都是通过 `instruction` 读取 `current_code`、`review_feedback`：
+[AlibabaReflectionFlowAgent.java](/Users/xiexu/xiaofu/agent-learning/module-reflection-paradigm/src/main/java/com/xbk/agent/framework/reflection/infrastructure/agentframework/AlibabaReflectionFlowAgent.java)
+
+#### 占位符替换原理
 
 很多人好奇 `{writer_output}` 是怎么被替换成实际值的，背后的链路如下：
 
-**第一步**：框架把 `instruction` 字符串包装成 `AgentInstructionMessage`（一种特殊的消息类型），标记为"未渲染"。
+**第一步**：框架把 `instruction` 字符串包装成 `AgentInstructionMessage`，标记为“未渲染”。
 
-**第二步**：Agent 执行前，`AgentLlmNode` 扫描消息列表，找到未渲染的 `AgentInstructionMessage`，调用 `renderPromptTemplate` 方法：
+**第二步**：Agent 执行前，`AgentLlmNode` 扫描消息列表，找到未渲染的指令消息，并把 `OverAllState.data()` 作为参数传给模板渲染器。
 
 ```java
-// AgentLlmNode.java 源码（简化）
 if (message instanceof AgentInstructionMessage && !instructionMessage.isRendered()) {
     String rendered = renderPromptTemplate(
         instructionMessage.getText(),
-        state.data()          // ← OverAllState 里的全部键值对作为替换参数
+        state.data()
     );
-    // 渲染后标记为"已渲染"，替换原消息
 }
 ```
 
-**第三步**：`renderPromptTemplate` 内部使用 Spring AI 的 `PromptTemplate` 完成占位符替换：
+**第三步**：模板渲染完成后，真正发给 LLM 的是替换后的 `UserMessage`。
+
+#### 扩展示例
 
 ```java
-private String renderPromptTemplate(String prompt, Map<String, Object> params) {
-    return PromptTemplate.builder()
-        .template(prompt)
-        .build()
-        .render(params);   // params 就是 OverAllState.data()
-}
+.instruction("""
+    原始问题：{input}
+
+    分类结果：{ticket_type}
+
+    请只输出一条给客服主管的转派建议。
+    """)
 ```
 
-**完整数据流**：
+#### 常见误解
 
-```
-OverAllState.data() = {
-    "input":              "写一篇关于 Java 的博客",
-    "writer_output":      "Java 是一门面向对象的编程语言...",
-    "translator_output":  "",
-    "reviewer_output":    ""
-}
-    ↓ 作为 params 传入
-PromptTemplate.render(params)
-    ↓ 替换占位符
-渲染后的 UserMessage:
-    "原始任务：写一篇关于 Java 的博客
-     当前状态：
-     writer_output=Java 是一门面向对象的编程语言...
-     translator_output=
-     reviewer_output=
-     路由规则：..."
-    ↓ 发给 LLM
-```
-
-**关键结论**：占位符的名字必须和 `OverAllState` 里的键名完全一致，否则替换为空字符串。这就是为什么 `outputKey`（见 2.4 节）需要与 `instruction` 里的占位符名对齐。
+- 占位符名字必须和状态键完全一致，否则会渲染为空
+- `instruction` 不是“越长越好”，它应该只保留这一轮真正需要的上下文
 
 ---
 
-### 2.4 `outputKey`：Agent 输出写入状态的协议
+### 2.7 `outputKey`：Agent 输出写回状态的协议
 
-`outputKey` 决定了 Agent 执行完后，把输出内容写到 `OverAllState` 的哪个键下。
+#### 作用
+
+`outputKey` 决定 Agent 执行完成后，输出内容写到 `OverAllState` 的哪个键下。
+它是多 Agent 串联时最关键的协议之一，因为下游 Agent 往往就是通过 `{outputKey}` 对应的键来读取上游结果。
+
+#### 默认行为与设置建议
+
+- 可选字段
+- 单 Agent 场景不一定必须配置
+- 只要存在“上游写、下游读”的状态交接，就强烈建议显式设置
+
+#### 本项目示例
+
+Supervisor 三个 Worker 的状态交接链非常典型：
 
 ```java
-ReactAgent writerAgent = ReactAgent.builder()
-    .name("writer_agent")
-    .outputKey("writer_output")    // ← 执行完后输出写入 state["writer_output"]
-    .build();
-
-ReactAgent translatorAgent = ReactAgent.builder()
-    .name("translator_agent")
-    .outputKey("translator_output")
-    .instruction("请把下面的中文博客翻译成英文：{writer_output}")
-    //                                            ↑ 读取上一个 Agent 的输出
-    .build();
+writerAgent      -> outputKey("writer_output")
+translatorAgent  -> outputKey("translator_output")
+reviewerAgent    -> outputKey("reviewer_output")
 ```
 
-**三个角色联动**：
+随后路由 Agent 的 `instruction` 又会读取这些键来判断下一跳。相关代码见：
+
+- [AlibabaSupervisorFlowAgent.java](/Users/xiexu/xiaofu/agent-learning/module-multi-agent-supervisor/src/main/java/com/xbk/agent/framework/supervisor/framework/agent/AlibabaSupervisorFlowAgent.java)
+- [FrameworkSupervisorPromptTemplates.java](/Users/xiexu/xiaofu/agent-learning/module-multi-agent-supervisor/src/main/java/com/xbk/agent/framework/supervisor/framework/prompt/FrameworkSupervisorPromptTemplates.java)
+
+Plan-and-Solve 模块也用同样方式把 `plan_result` 传给执行器：
+[AlibabaSequentialPlanAndSolveAgent.java](/Users/xiexu/xiaofu/agent-learning/module-plan-replan-paradigm/src/main/java/com/xbk/agent/framework/planreplan/infrastructure/agentframework/AlibabaSequentialPlanAndSolveAgent.java)
+
+#### 数据流示意
 
 ```
 writerAgent 执行完
     → 输出写入 OverAllState["writer_output"]
         → translatorAgent 的 instruction 里 {writer_output} 被替换为实际内容
             → translatorAgent 执行完后写入 OverAllState["translator_output"]
-                → ...
 ```
 
-这就是框架版多 Agent 状态交接的核心协议：**上游用 `outputKey` 写，下游用 `{key}` 读。**
+#### 扩展示例
+
+```java
+ReactAgent classifier = ReactAgent.builder()
+    .name("classifier")
+    .description("负责给工单分类")
+    .model(chatModel)
+    .outputKey("ticket_type")
+    .build();
+```
+
+#### 常见误解
+
+- `outputKey` 不是日志字段，它是状态协议字段
+- `outputKey` 不要求和 `name` 一致，二者职责完全不同
+
+---
+
+### 2.8 `methodTools`：把 Java 方法注册成可调用工具
+
+#### 作用
+
+`methodTools` 用来绑定带 `@Tool` 注解的 Java 对象，让 LLM 在推理过程中可以主动调用这些方法。
+这会把 Agent 从“只会生成文本”升级成“会调用工具执行动作”。
+
+#### 默认行为与设置建议
+
+- 可选字段
+- 如果 Agent 只做纯文本推理，可以不配
+- 只要需要查天气、调接口、执行计算等外部动作，就应该考虑配置
+
+#### 本项目示例
+
+ReAct Demo 里直接把 `TravelTools` 绑定到 `ReactAgent`：
+
+```java
+.methodTools(new TravelTools())
+```
+
+对应代码见 [SpringAIReActTravelDemo.java](/Users/xiexu/xiaofu/agent-learning/module-react-paradigm/src/test/java/com/xbk/agent/framework/react/SpringAIReActTravelDemo.java)。
+工具定义与调用细节详见第 6 节。
+
+#### 扩展示例
+
+```java
+.methodTools(new TicketQueryTools(), new CrmWriteTools())
+```
+
+这表示同一个 Agent 既能查工单，也能回写 CRM。
+
+#### 常见误解
+
+- `methodTools` 绑定的是对象，不是字符串工具名
+- LLM 能不能正确调用工具，很大程度取决于 `@Tool.description` 是否清晰
+
+---
+
+### 2.9 `saver`：给单个 Agent 配状态持久化
+
+#### 作用
+
+`saver` 负责保存这个 Agent 执行过程中的状态快照，并按 `threadId` 隔离不同调用。
+在教学场景里，它最常见的价值是让你观察完整消息历史；在生产场景里，它还能用于恢复执行、跨请求续跑。
+
+#### 默认行为与设置建议
+
+- 可选字段
+- 单独给 `ReactAgent` 配 Saver 时，通常是最直接的接法
+- 如果是 `SupervisorAgent` 这类更高层容器，也可以改用 `CompileConfig.saverConfig(...)` 统一注册
+
+#### 本项目示例
+
+ReAct 官方 Demo 里直接用了内存版 `MemorySaver`：
+
+```java
+.saver(new MemorySaver())
+```
+
+对应代码见：
+
+- [SpringAIReActTravelDemo.java](/Users/xiexu/xiaofu/agent-learning/module-react-paradigm/src/test/java/com/xbk/agent/framework/react/SpringAIReActTravelDemo.java)
+- [SpringAIReActTravelOpenAiDemo.java](/Users/xiexu/xiaofu/agent-learning/module-react-paradigm/src/test/java/com/xbk/agent/framework/react/SpringAIReActTravelOpenAiDemo.java)
+
+#### 扩展示例
+
+```java
+ReactAgent agent = ReactAgent.builder()
+    .name("qa-agent")
+    .description("支持多轮问答")
+    .model(chatModel)
+    .saver(new MemorySaver())
+    .build();
+```
+
+#### 常见误解
+
+- `saver` 不是业务记忆系统，它保存的是图运行时状态快照
+- 不配置 `saver` 不代表 Agent 不能运行，只是你失去了显式状态持久化能力
+
+---
+
+### 2.10 `includeContents`：是否继承父流程已有消息历史
+
+#### 作用
+
+`includeContents` 决定当前 Agent 执行时，是否把父流程已经积累的消息历史一并带进去。
+它主要影响“这个 Agent 看到多少上下文”。
+
+默认值是 `true`。也就是说，如果你不关掉它，Agent 可能会继承上游的整段消息链。
+
+#### 默认行为与设置建议
+
+- 默认 `true`
+- 当你希望 Agent 只看“当前状态键 + 当前指令”时，建议设为 `false`
+- 多 Agent 协作里，如果上下文太长或角色太容易被污染，通常应该显式关闭
+
+#### 本项目示例
+
+Plan-and-Solve 里，Planner 和 Executor 都显式设置了：
+
+```java
+.includeContents(false)
+```
+
+原因在代码注释里写得很清楚：不希望继承父流程无关消息，避免任务污染。对应代码见：
+[AlibabaSequentialPlanAndSolveAgent.java](/Users/xiexu/xiaofu/agent-learning/module-plan-replan-paradigm/src/main/java/com/xbk/agent/framework/planreplan/infrastructure/agentframework/AlibabaSequentialPlanAndSolveAgent.java)
+
+Conversation 与 Reflection 模块也大量使用了同样配置，说明这在本项目里是主流选择。
+
+#### 扩展示例
+
+如果你在做会议纪要补全，希望 Agent 基于完整聊天记录继续总结，就可以保留默认值：
+
+```java
+ReactAgent summarizer = ReactAgent.builder()
+    .name("meeting-summarizer")
+    .description("基于完整对话历史生成纪要")
+    .model(chatModel)
+    .includeContents(true)
+    .build();
+```
+
+#### 常见误解
+
+- `includeContents(false)` 不是让 Agent 看不到状态键；它只是关闭“父流程消息历史继承”
+- 关闭后，`instruction` 中通过 `{key}` 引入的状态仍然可以正常读取
+
+---
+
+### 2.11 `returnReasoningContents`：是否把中间思维链回传到状态
+
+#### 作用
+
+`returnReasoningContents` 用来控制 Agent 是否把模型返回的 reasoning 内容一起暴露给上层流程。
+它主要影响“父流程能不能看到模型的中间思考过程”。
+
+#### 默认行为与设置建议
+
+- 可选字段，通常建议显式设为 `false`
+- 教学、实验、可观测性调试场景可以考虑打开
+- 企业生产场景一般关闭，避免无谓泄露隐藏推理过程或放大上下文体积
+
+#### 本项目示例
+
+这个项目的框架版实现基本都显式关闭了它，例如：
+
+```java
+.returnReasoningContents(false)
+```
+
+你可以在这些类里看到：
+
+- [AlibabaSupervisorFlowAgent.java](/Users/xiexu/xiaofu/agent-learning/module-multi-agent-supervisor/src/main/java/com/xbk/agent/framework/supervisor/framework/agent/AlibabaSupervisorFlowAgent.java)
+- [AlibabaSequentialPlanAndSolveAgent.java](/Users/xiexu/xiaofu/agent-learning/module-plan-replan-paradigm/src/main/java/com/xbk/agent/framework/planreplan/infrastructure/agentframework/AlibabaSequentialPlanAndSolveAgent.java)
+- [AlibabaReflectionFlowAgent.java](/Users/xiexu/xiaofu/agent-learning/module-reflection-paradigm/src/main/java/com/xbk/agent/framework/reflection/infrastructure/agentframework/AlibabaReflectionFlowAgent.java)
+- [AlibabaConversationFlowAgent.java](/Users/xiexu/xiaofu/agent-learning/module-multi-agent-conversation/src/main/java/com/xbk/agent/framework/conversation/infrastructure/agentframework/AlibabaConversationFlowAgent.java)
+
+#### 扩展示例
+
+如果你要做一个教学版 Demo，专门观察模型推理过程，可以这样开：
+
+```java
+ReactAgent tutorAgent = ReactAgent.builder()
+    .name("math-tutor")
+    .description("展示解题思路")
+    .model(chatModel)
+    .returnReasoningContents(true)
+    .build();
+```
+
+#### 常见误解
+
+- 打开它不等于“模型一定会稳定返回完整思维链”，这还取决于底层模型能力和返回协议
+- 这个字段主要是可观测性开关，不应被当作业务输出主渠道
 
 ---
 

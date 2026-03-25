@@ -20,9 +20,28 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * CodeReviewer 节点
+ * CodeReviewer 节点（框架版 AutoGen 群聊）
  *
- * 职责：读取共享群聊历史，决定是否批准结束，并写回同一份 shared_messages
+ * 职责：读取 OverAllState 中的共享群聊历史，扮演审查员角色评审最新 Python 脚本，
+ * 通过写入 {@code done=true/false} 驱动条件边决定群聊是终止还是回环到 ProductManagerNode。
+ *
+ * <p>在 AutoGen 群聊范式中的定位：
+ * CodeReviewer 是群聊中唯一有权终止对话的节点——
+ * 只有当它在输出中包含结束标记（TASK_DONE）时，{@code done} 字段才会被设为 {@code true}，
+ * 触发 {@code AlibabaConversationFlowAgent} 中的条件边跳转到 {@code StateGraph.END}。
+ * ProductManager 和 Engineer 均无终止权限，即使它们误输出了结束标记也会被剥离。
+ *
+ * <p>与手写版 CodeReviewerAgent 的对照：
+ * <pre>
+ *   手写版 CodeReviewerAgent.execute(history, task, conversationId)：
+ *     → 返回审查意见字符串
+ *     → 是否终止由 RoundRobinGroupChat 调用 shouldStop() 外部判断
+ *
+ *   框架版 CodeReviewerNode.apply(OverAllState state)：
+ *     → 审查员节点自己检测 containsTaskDoneMarker(output) 并写入 done 字段
+ *     → 条件边 AlibabaConversationFlowAgent.nextFromCodeReviewer() 读取 done 字段决定跳转
+ *     → 终止判断从"调用方外部判断"变成了"节点内部写状态 + 图结构声明出口"
+ * </pre>
  *
  * @author xiexu
  */
