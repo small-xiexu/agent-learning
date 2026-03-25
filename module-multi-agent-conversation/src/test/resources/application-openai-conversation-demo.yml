@@ -4,12 +4,13 @@ spring:
 
 llm:
   provider: openai-compatible
-  base-url: https://api.openai.com
-  api-key:
+  base-url: https://apis.itedus.cn
+  api-key: sk-JjZEhlPxlpRUHOqi75358aE123Fa47CcA2Ec467d15CcC2Cd
   model: gpt-4o
   chat-completions-path: /v1/chat/completions
 
 demo:
   conversation:
     openai:
-      enabled: false
+      enabled: true
+

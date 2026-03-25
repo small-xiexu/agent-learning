@@ -10,6 +10,8 @@ import java.util.List;
  *
  * 职责：集中保存当前任务在中文初稿、英文译稿、审校稿和路由轨迹上的最新状态。
  * 它表达的是“当前事实快照”，而不是完整执行日志；完整日志由 Scratchpad 维护。
+ * 对初学者来说，可以把它理解成“主管此刻看到的黑板最新内容”，
+ * 而不是“从第一轮到当前轮的全部聊天记录”。
  *
  * @author xiexu
  */
@@ -21,6 +23,7 @@ public final class SupervisorWorkflowState {
     private String chineseDraft;
     private String englishTranslation;
     private String reviewedEnglish;
+    // 这里统计的是真正完成的 Worker 执行次数，不包含 Supervisor 自己做路由判断的次数。
     private int completedWorkerSteps;
 
     /**
@@ -108,6 +111,9 @@ public final class SupervisorWorkflowState {
     /**
      * 根据 Worker 类型写入对应产物。
      *
+     * 这个方法只关心“当前事实应该更新成什么”，不负责保留历史版本。
+     * 历史回放与审计由 Scratchpad 负责，两者分离后，状态模型会更容易理解。
+     *
      * @param workerType Worker 类型
      * @param workerOutput Worker 输出
      */
@@ -134,6 +140,9 @@ public final class SupervisorWorkflowState {
 
     /**
      * 返回路由轨迹快照。
+     *
+     * 返回结果里保留 `FINISH`，这样调用方能看到主管最后是“主动宣布结束”，
+     * 而不是只能猜测流程为什么停下来。
      *
      * @return 路由轨迹快照
      */

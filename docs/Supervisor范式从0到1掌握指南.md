@@ -334,19 +334,84 @@
 
 > 明明已经有 `SupervisorAgent` 了，为什么还要再定义一个 `supervisor_router_agent`？
 
-原因是：
+**关键在于：`SupervisorAgent` 是运行时容器，它自己不会思考；`mainRoutingAgent` 才是大脑，负责每一轮的决策。**
 
-`SupervisorAgent`` 本身更像一个运行时总控，而它仍然需要一个“主脑”去判断下一跳。
+用公司组织的类比来理解这两个角色的分工：
 
-在这个模块里，`supervisor_router_agent` 的职责非常单一：
+| 角色 | 对应类 | 职责 |
+| --- | --- | --- |
+| 公司组织架构（流程引擎） | `SupervisorAgent` | 管理”谁是下属”、”循环多少轮”、”怎么调度执行”，是运行时容器 |
+| 主管本人（大脑） | `mainRoutingAgent` | 每轮开会，看当前进展，判断”下一步该交给谁” |
+| 员工 | `writerAgent` / `translatorAgent` / `reviewerAgent` | 只管做自己那份活，做完交回 |
 
-- 读取当前状态
-- 判断 `writer_output`、`translator_output`、`reviewer_output` 的完成情况
-- 严格返回 `["writer_agent"]` / `["translator_agent"]` / `["reviewer_agent"]` / `["FINISH"]`
+`SupervisorAgent` 自己的运行逻辑是这样一个循环：
 
-所以可以把它理解为：
+```
+每一轮：
+  1. 把当前状态交给 mainRoutingAgent 问：”现在该派谁？”
+  2. mainRoutingAgent 看状态，回答：”派 writer_agent” 或 “FINISH”
+  3. SupervisorAgent 按指令调度对应的 Worker
+  4. Worker 完成后把结果写回状态
+  5. 回到第 1 步
+```
 
-**Supervisor 的决策脑，而不是执行者。**
+**`SupervisorAgent` 本身不做任何判断，它只是忠实地执行 `mainRoutingAgent` 的指令。**
+
+在这个模块里，`supervisor_router_agent` 的判断逻辑非常单一——检查三个输出字段的完成情况：
+
+```
+writer_output     为空 → 返回 [“writer_agent”]
+translator_output 为空 → 返回 [“translator_agent”]
+reviewer_output   为空 → 返回 [“reviewer_agent”]
+三个都有了        → 返回 [“FINISH”]
+```
+
+它只做路由判断，不产出任何业务内容。
+
+如果你第一次看到这 4 行容易懵，可以直接按“流水线进度条”理解：
+
+- `writer_output` 表示“中文博客有没有写完”
+- `translator_output` 表示“英文翻译有没有产出”
+- `reviewer_output` 表示“最终审校稿有没有完成”
+- 返回的 `["writer_agent"]`、`["translator_agent"]`、`["reviewer_agent"]`、`["FINISH"]` 不是业务结果，而是主路由 Agent 给框架的“下一跳指令”
+
+把它翻译成大白话就是：
+
+```
+第一轮：
+  三个 output 都是空
+  -> 说明第一步写作还没开始
+  -> 返回 ["writer_agent"]
+
+第二轮：
+  writer_output 已经有值
+  translator_output 还是空
+  -> 说明中文稿写完了，但翻译还没做
+  -> 返回 ["translator_agent"]
+
+第三轮：
+  translator_output 已经有值
+  reviewer_output 还是空
+  -> 说明翻译完成了，但审校还没做
+  -> 返回 ["reviewer_agent"]
+
+第四轮：
+  reviewer_output 也有值了
+  -> 说明整条流水线已经结束
+  -> 返回 ["FINISH"]
+```
+
+所以这段路由规则本质上表达的是一条固定顺序的状态机：
+
+```text
+writer_agent -> translator_agent -> reviewer_agent -> FINISH
+```
+
+虽然底层载体是 `SupervisorAgent`，但这个具体示例并没有做复杂分支决策，而是用 Supervisor 框架把一条三阶段流水线包装成了“基于状态反复判断下一跳”的可执行流程。
+
+所以可以把这两个角色理解为：
+
+**`SupervisorAgent` 是流程引擎（负责循环调度），`mainRoutingAgent` 是决策大脑（负责每轮判断下一跳）。框架把”跑循环”和”做决策”拆成两个独立职责，所以需要两个角色。**
 
 ### 7.4 第四步：把 `mainAgent + subAgents` 装配进 `SupervisorAgent`
 

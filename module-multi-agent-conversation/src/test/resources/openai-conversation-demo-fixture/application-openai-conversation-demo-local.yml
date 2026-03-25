@@ -3,6 +3,7 @@ llm:
   base-url: https://api.openai.com
   api-key: fixture-conversation-key
   model: gpt-4o
+  chat-completions-path: /v1/chat/completions
 
 demo:
   conversation:

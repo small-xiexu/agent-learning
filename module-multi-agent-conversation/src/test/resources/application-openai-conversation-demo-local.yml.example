@@ -8,4 +8,4 @@ llm:
 demo:
   conversation:
     openai:
-      enabled: false
+      enabled: true

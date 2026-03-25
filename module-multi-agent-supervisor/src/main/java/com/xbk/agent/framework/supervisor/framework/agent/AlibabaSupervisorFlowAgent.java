@@ -52,20 +52,35 @@ public final class AlibabaSupervisorFlowAgent {
      * @param maxRounds 最大调度轮次
      */
     public AlibabaSupervisorFlowAgent(AgentLlmGateway agentLlmGateway, ChatModel chatModel, int maxRounds) {
+        // 保存统一的 LLM 网关，后续运行过程中需要通过它接入项目自己的大模型能力。
         this.agentLlmGateway = agentLlmGateway;
+        // 创建写作子 Agent，负责先产出中文博客草稿。
         this.writerAgent = buildWriterAgent(chatModel);
+        // 创建翻译子 Agent，负责把写作阶段的中文内容翻译成英文。
         this.translatorAgent = buildTranslatorAgent(chatModel);
+        // 创建审校子 Agent，负责检查英文译文的语法、拼写和表达是否自然。
         this.reviewerAgent = buildReviewerAgent(chatModel);
-        // mainRoutingAgent 只负责判断下一跳，本身不产出业务内容。
+        // 创建主路由 Agent，它只负责判断下一跳该调用哪个子 Agent。
+        // 它本身不直接生成博客、翻译或审校结果，只做流程调度。
         this.mainRoutingAgent = buildMainRoutingAgent(chatModel);
+        // 组装最终对外使用的 SupervisorAgent，把调度器、子 Agent 和编译配置整合起来。
         this.supervisorAgent = SupervisorAgent.builder()
+                // 给这个 Supervisor 一个内部名称，便于日志、调试和框架内部识别。
                 .name("blog_supervisor_agent")
+                // 描述这个 Supervisor 的职责，让框架和模型明确它是一个中心化调度者。
                 .description("中心化 Supervisor Agent，负责动态选择 writer、translator、reviewer 并在完成后 FINISH")
+                // 配置图执行时的编译参数，例如允许递归回环的最大深度。
                 .compileConfig(CompileConfig.builder()
+                        // recursionLimit 用来限制最多能在多个 Agent 之间来回调度多少步，防止死循环。
+                        // 这里至少给 8 步；如果 maxRounds 更大，就按每轮大约 4 步来放宽上限。
                         .recursionLimit(Math.max(8, maxRounds * 4))
+                        // 完成 CompileConfig 构建。
                         .build())
+                // 注册所有真正干活的子 Agent，Supervisor 后续会从这里选择下一跳。
                 .subAgents(List.of(writerAgent, translatorAgent, reviewerAgent))
+                // 指定主 Agent 为路由 Agent，也就是整个流程的大脑。
                 .mainAgent(mainRoutingAgent)
+                // 完成 SupervisorAgent 构建，得到最终可执行的监督者实例。
                 .build();
     }
 

@@ -88,41 +88,57 @@ public final class HandwrittenSupervisorCoordinator {
     /**
      * 运行手写版 Supervisor。
      *
+     * 整个过程可以按“初始化 -> Supervisor 决策 -> Worker 执行 -> 状态沉淀 -> 终止判断”理解。
+     * 和框架版不同，手写版不会把这些步骤藏在图引擎内部，而是显式展开成一段 while 循环，
+     * 方便学习者看清 Supervisor 模式到底是如何一轮轮推进到 FINISH 的。
+     *
      * @param task 原始任务
      * @return 统一运行结果
      */
     public SupervisorRunResult run(String task) {
+        // 每次运行都创建新的会话标识，并重新初始化“当前事实快照”和“完整历史回放”。
         String conversationId = REQUEST_PREFIX + UUID.randomUUID();
         SupervisorWorkflowState workflowState = new SupervisorWorkflowState(task, conversationId);
         scratchpad.clear();
         // 手写版没有框架状态容器，因此原始任务也要主动写入 Scratchpad 供后续回放。
         scratchpad.seedTask(conversationId, task);
 
+        // 这里统计的是“Supervisor 已经做了多少轮决策”，不是 Worker 已经执行了多少步。
+        // 两者拆开记录，初学者更容易理解“调度轮次限制”和“实际执行步数”并不是同一件事。
         int completedDecisionRounds = 0;
         while (completionPolicy.allowsNextRound(completedDecisionRounds)) {
             completedDecisionRounds++;
+            // 第一阶段：让 Supervisor 读取当前事实和历史轨迹，决定下一跳派谁执行。
             RoutingDecision decision = askSupervisor(task, workflowState, conversationId);
             // routeTrail 记录的是 Supervisor 的真实决策序列，因此 FINISH 也要入轨迹。
             workflowState.recordRoute(decision.getNextWorker());
             scratchpad.appendSupervisorDecision(conversationId, decision);
             if (decision.getNextWorker() == SupervisorWorkerType.FINISH) {
+                // 主管显式宣布任务收敛后，直接返回最终结果，不再派发新的 Worker。
                 return buildResult(workflowState, "FINISH");
             }
+
+            // 第二阶段：由协调器把子任务分发给具体 Worker，拿回这一轮的业务产出。
             String workerOutput = dispatchWorker(decision, workflowState, conversationId);
             // Worker 输出一式两份：一份写当前事实，一份写审计历史。
             workflowState.applyWorkerOutput(decision.getNextWorker(), workerOutput);
             scratchpad.appendWorkerOutput(conversationId, decision.getNextWorker(), workerOutput);
+            // stepRecord 只记录真正发生过的 Worker 执行，因此不会为 FINISH 额外生成一条步骤。
             scratchpad.appendStepRecord(new SupervisorStepRecord(
                     workflowState.getCompletedWorkerSteps(),
                     decision.getNextWorker(),
                     decision.getTaskInstruction(),
                     workerOutput));
         }
+        // 达到最大调度轮次时也返回当前最成熟结果，方便学习者观察“未完全收敛”时系统停在了哪里。
         return buildResult(workflowState, "MAX_ROUNDS_REACHED");
     }
 
     /**
      * 请求监督者做出下一轮决策。
+     *
+     * 这一步体现了 Supervisor 模式最关键的能力：主管本身不直接产出业务内容，
+     * 而是根据“当前事实快照 + 历史对话轨迹”决定下一位最合适的 Worker。
      *
      * @param task 原始任务
      * @param workflowState 当前工作流状态
@@ -145,6 +161,7 @@ public final class HandwrittenSupervisorCoordinator {
                                 HandwrittenSupervisorPromptTemplates.supervisorSystemPrompt()),
                         buildMessage(conversationId, MessageRole.USER, userPrompt)))
                 .build());
+        // 优先读取规范化消息内容，拿不到时再回退到原始文本，避免解析器因响应封装差异而失效。
         String responseText = response.getOutputMessage() != null && response.getOutputMessage().getContent() != null
                 ? response.getOutputMessage().getContent()
                 : response.getRawText();
@@ -153,6 +170,9 @@ public final class HandwrittenSupervisorCoordinator {
 
     /**
      * 分发到具体 Worker。
+     *
+     * 这里不是 Worker 自己决定下一跳，而是协调器根据 Supervisor 的决策显式派发。
+     * 这种“控制权集中在主管手里”的写法，正是 Supervisor 范式和普通链式调用的重要区别。
      *
      * @param decision 路由决策
      * @param workflowState 当前工作流状态
@@ -167,12 +187,14 @@ public final class HandwrittenSupervisorCoordinator {
             return writerAgent.write(workflowState.getTask(), decision.getTaskInstruction(), conversationId);
         }
         if (decision.getNextWorker() == SupervisorWorkerType.TRANSLATOR) {
+            // Translator 不再回看原始任务主体，而是消费 Writer 已经交付的中文初稿。
             return translatorAgent.translate(
                     workflowState.getChineseDraft(),
                     decision.getTaskInstruction(),
                     conversationId);
         }
         if (decision.getNextWorker() == SupervisorWorkerType.REVIEWER) {
+            // Reviewer 的输入是当前最新的英文译稿，职责是把结果推向最终完成态。
             return reviewerAgent.review(
                     workflowState.getEnglishTranslation(),
                     decision.getTaskInstruction(),
@@ -183,6 +205,9 @@ public final class HandwrittenSupervisorCoordinator {
 
     /**
      * 构造统一运行结果。
+     *
+     * 手写版虽然没有图框架里的全局状态对象，但最终仍然要把“最终产物、路由轨迹、步骤审计”
+     * 抽成和框架版同构的结果，方便学习者直接做手写版 / 框架版对照。
      *
      * @param workflowState 工作流状态
      * @param stopReason 停止原因

@@ -1,4 +1,4 @@
-# AutoGen多智能体群聊与Spring AI Alibaba从0到1掌握指南
+# AutoGen范式从0到1掌握指南
 
 ## 1. 这篇文档到底要解决什么问题
 
