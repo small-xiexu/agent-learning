@@ -10,6 +10,7 @@ import com.xbk.agent.framework.core.memory.Message;
 import com.xbk.agent.framework.roleplay.domain.memory.CamelDialogueTurn;
 import com.xbk.agent.framework.roleplay.domain.role.CamelRoleContract;
 import com.xbk.agent.framework.roleplay.domain.role.CamelRoleType;
+import com.xbk.agent.framework.roleplay.infrastructure.agentframework.support.CamelStateKeys;
 import com.xbk.agent.framework.roleplay.infrastructure.agentframework.support.CamelTranscriptStateSupport;
 import com.xbk.agent.framework.roleplay.support.CamelPromptTemplates;
 
@@ -83,11 +84,11 @@ public class CamelTraderHandoffNode implements AsyncNodeAction {
     @Override
     public CompletableFuture<Map<String, Object>> apply(OverAllState state) {
         // 读取当前对话标识，保证交易员本轮发言挂在同一条 conversation 链路上。
-        String conversationId = state.value("conversation_id", "");
+        String conversationId = state.value(CamelStateKeys.CONVERSATION_ID, "");
         // 读取用户原始任务，作为每轮交易员推理的基线上下文，始终传入 Prompt。
-        String task = state.value("input", "");
+        String task = state.value(CamelStateKeys.INPUT, "");
         // 读取程序员传来的接力棒（上一轮程序员节点写入），可能为空（第一轮）。
-        String programmerMessage = state.value("message_for_trader", "");
+        String programmerMessage = state.value(CamelStateKeys.MESSAGE_FOR_TRADER, "");
 
         List<Message> messages = new ArrayList<Message>();
         // FlowAgent 版不再重放完整字符串历史，只传交易员真正需要消费的最小 baton：
@@ -115,20 +116,20 @@ public class CamelTraderHandoffNode implements AsyncNodeAction {
         boolean done = CamelPromptTemplates.containsTaskDoneMarker(rawOutput)
                 && CamelPromptTemplates.canTraderFinish(traderTurnCount);
         // 总轮次加一，用于外部轮次上限保护。
-        int nextTurnCount = state.value("turn_count", Integer.class).orElse(Integer.valueOf(0)) + 1;
+        int nextTurnCount = state.value(CamelStateKeys.TURN_COUNT, Integer.class).orElse(Integer.valueOf(0)) + 1;
         // 把本轮状态增量写回，框架自动 merge 进 OverAllState。
         // message_for_programmer：交易员的输出即程序员下一轮的输入（接力棒传递）。
         // active_role：若终止则停留在交易员（已完成），否则切换到程序员（继续对话）。
         return CompletableFuture.completedFuture(Map.of(
-                "last_trader_output", output,
-                "message_for_programmer", output,
-                "active_role", done ? CamelRoleType.TRADER.getStateValue() : CamelRoleType.PROGRAMMER.getStateValue(),
-                "done", Boolean.valueOf(done),
+                CamelStateKeys.LAST_TRADER_OUTPUT, output,
+                CamelStateKeys.MESSAGE_FOR_PROGRAMMER, output,
+                CamelStateKeys.ACTIVE_ROLE, done ? CamelRoleType.TRADER.getStateValue() : CamelRoleType.PROGRAMMER.getStateValue(),
+                CamelStateKeys.DONE, Boolean.valueOf(done),
                 // 只有真正终止时才记录 stop_reason，避免提前污染结束状态。
-                "stop_reason", done ? rawOutput : state.value("stop_reason", ""),
-                "turn_count", Integer.valueOf(nextTurnCount),
+                CamelStateKeys.STOP_REASON, done ? rawOutput : state.value(CamelStateKeys.STOP_REASON, ""),
+                CamelStateKeys.TURN_COUNT, Integer.valueOf(nextTurnCount),
                 // transcript 序列化后存入状态，跨节点流动。
-                "transcript", CamelTranscriptStateSupport.toStateTranscript(transcript)));
+                CamelStateKeys.TRANSCRIPT, CamelTranscriptStateSupport.toStateTranscript(transcript)));
     }
 
     /**
@@ -138,7 +139,7 @@ public class CamelTraderHandoffNode implements AsyncNodeAction {
      * @return transcript 副本
      */
     private List<CamelDialogueTurn> extractTranscript(OverAllState state) {
-        return CamelTranscriptStateSupport.readTranscript(state.value("transcript").orElse(List.of()));
+        return CamelTranscriptStateSupport.readTranscript(state.value(CamelStateKeys.TRANSCRIPT).orElse(List.of()));
     }
 
     /**

@@ -48,16 +48,22 @@ public class HandwrittenReflectionAgent {
      */
     public RunResult run(String task) {
         String conversationId = "handwritten-reflection-" + UUID.randomUUID();
+        // Reflection 不会一上来就进入循环，而是先生成一版“可被评审的初稿”。
+        // 后续每一轮反思，都是围绕这份 currentCode 继续批评和改写。
         String currentCode = javaCoder.generateInitialCode(task, conversationId);
         String latestReflection = "";
 
         for (int round = 1; round <= maxReflectionRounds; round++) {
+            // 先让 Reviewer 针对“当前版本代码”给出本轮反馈。
             latestReflection = javaReviewer.review(task, currentCode, conversationId);
+            // memory 记录的是每一轮“被审查的代码 + 对应反馈”，
+            // 方便最终回放整个 Reflection 过程是如何逐步收敛的。
             memory.addTurnRecord(new ReflectionTurnRecord(currentCode, latestReflection));
 
             if (shouldStop(latestReflection) || round == maxReflectionRounds) {
                 return new RunResult(task, currentCode, latestReflection, memory.snapshot());
             }
+            // 只有在“还不能停”的情况下，Coder 才会拿着上一版代码和最新反馈继续 refinement。
             currentCode = javaCoder.refineCode(task, currentCode, latestReflection, conversationId);
         }
         return new RunResult(task, currentCode, latestReflection, memory.snapshot());
@@ -70,6 +76,8 @@ public class HandwrittenReflectionAgent {
      * @return true 表示停止
      */
     private boolean shouldStop(String reviewFeedback) {
+        // 这里用一个最小化协议演示“评审方决定是否收敛”。
+        // 真实工程里可以替换成更稳定的结构化信号，而不必依赖自然语言片段匹配。
         return reviewFeedback != null && reviewFeedback.contains("无需改进");
     }
 

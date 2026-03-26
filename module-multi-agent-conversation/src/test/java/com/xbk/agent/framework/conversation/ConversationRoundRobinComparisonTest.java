@@ -19,6 +19,7 @@ import com.xbk.agent.framework.conversation.domain.memory.ConversationMemory;
 import com.xbk.agent.framework.conversation.domain.memory.ConversationTurn;
 import com.xbk.agent.framework.conversation.domain.role.ConversationRoleType;
 import com.xbk.agent.framework.conversation.infrastructure.agentframework.AlibabaConversationFlowAgent;
+import com.xbk.agent.framework.conversation.infrastructure.agentframework.support.ConversationStateKeys;
 import com.xbk.agent.framework.conversation.infrastructure.agentframework.support.ConversationStateSupport;
 import org.junit.jupiter.api.Test;
 
@@ -89,10 +90,10 @@ class ConversationRoundRobinComparisonTest {
         assertEquals(ConversationRoleType.CODE_REVIEWER, result.getStopRole());
         assertTrue(result.getStopReason().contains("<AUTOGEN_TASK_DONE>"));
         assertTrue(result.getFinalPythonScript().contains("requests.get"));
-        assertTrue(state.value("done", Boolean.class).orElse(Boolean.FALSE));
-        assertEquals("approved", state.value("review_status", ""));
-        assertEquals(Integer.valueOf(6), state.value("turn_count", Integer.class).orElseThrow());
-        assertTrue(state.value("current_python_script", "").contains("timeout=10"));
+        assertTrue(state.value(ConversationStateKeys.DONE, Boolean.class).orElse(Boolean.FALSE));
+        assertEquals("approved", state.value(ConversationStateKeys.REVIEW_STATUS, ""));
+        assertEquals(Integer.valueOf(6), state.value(ConversationStateKeys.TURN_COUNT, Integer.class).orElseThrow());
+        assertTrue(state.value(ConversationStateKeys.CURRENT_PYTHON_SCRIPT, "").contains("timeout=10"));
         assertEquals("autogen-product-manager-agent", agent.getProductManagerAgent().name());
         assertEquals("autogen-engineer-agent", agent.getEngineerAgent().name());
         assertEquals("autogen-code-reviewer-agent", agent.getCodeReviewerAgent().name());

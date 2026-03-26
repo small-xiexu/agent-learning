@@ -49,6 +49,9 @@ public class SpringAiResponseMapper {
         AssistantMessage assistantMessage = generation.getOutput();
         String text = assistantMessage.getText();
         String normalizedText = text == null ? "" : text;
+        // 一次 provider 响应在项目里会被拆成两层语义：
+        // 1. toolCalls：供当前轮运行时立即执行工具；
+        // 2. outputMessage.metadata：供下一轮请求把 assistant 的 tool_calls 原样还原回去。
         List<ToolCall> toolCalls = toToolCalls(assistantMessage);
         Message outputMessage = Message.builder()
                 .messageId(UUID.randomUUID().toString())
@@ -78,6 +81,8 @@ public class SpringAiResponseMapper {
         if (assistantMessage == null || !assistantMessage.hasToolCalls()) {
             return Collections.emptyList();
         }
+        // 这里把 Spring AI 的 ToolCall 转成项目统一 ToolCall，
+        // 目的是让真正的工具执行完全走 framework-core 的抽象，而不是把 Spring AI 类型泄漏到上层。
         List<ToolCall> toolCalls = new ArrayList<ToolCall>();
         for (AssistantMessage.ToolCall toolCall : assistantMessage.getToolCalls()) {
             toolCalls.add(ToolCall.builder()
@@ -99,6 +104,8 @@ public class SpringAiResponseMapper {
         if (assistantMessage == null || !assistantMessage.hasToolCalls()) {
             return Collections.emptyMap();
         }
+        // 这里看起来像“重复保存一份 tool_calls”，其实是必要的：
+        // 当前轮工具执行只需要统一 ToolCall，但下一轮重新发给 provider 时，还要还原成 assistant 消息里的原始 tool_calls 结构。
         List<Map<String, Object>> toolCalls = new ArrayList<Map<String, Object>>();
         for (AssistantMessage.ToolCall toolCall : assistantMessage.getToolCalls()) {
             Map<String, Object> toolCallMetadata = new java.util.LinkedHashMap<String, Object>();
@@ -122,6 +129,8 @@ public class SpringAiResponseMapper {
         if (argumentsJson == null || argumentsJson.isBlank()) {
             return Collections.emptyMap();
         }
+        // provider 返回的参数通常是 JSON 字符串，而项目内部执行工具时需要 Map 结构，
+        // 因此在进入 framework-core 前先完成一次反序列化。
         return (Map<String, Object>) jsonParser.parseMap(argumentsJson);
     }
 

@@ -5,6 +5,8 @@ import com.alibaba.cloud.ai.graph.action.AsyncNodeAction;
 import com.xbk.agent.framework.graphflow.common.tool.MockSearchTool;
 import lombok.extern.slf4j.Slf4j;
 
+import com.xbk.agent.framework.graphflow.framework.support.GraphFlowStateKeys;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -50,22 +52,22 @@ public class SearchNodeAction implements AsyncNodeAction {
      */
     @Override
     public CompletableFuture<Map<String, Object>> apply(OverAllState state) {
-        String searchQuery = state.value("search_query", String.class).orElse("");
+        String searchQuery = state.value(GraphFlowStateKeys.SEARCH_QUERY, String.class).orElse("");
         log.info("SearchNodeAction 开始执行，search_query={}", searchQuery);
 
         Map<String, Object> updates = new HashMap<>();
         try {
             String results = searchTool.search(searchQuery);
-            updates.put("search_results", results);
+            updates.put(GraphFlowStateKeys.SEARCH_RESULTS, results);
             // search_failed=false 是条件边路由器（SearchResultEdgeRouter）的判断依据
             // 等价于手写版：state.setStepStatus(SEARCH_SUCCESS)
-            updates.put("search_failed", Boolean.FALSE);
+            updates.put(GraphFlowStateKeys.SEARCH_FAILED, Boolean.FALSE);
             log.info("SearchNodeAction 执行成功");
         } catch (Exception e) {
-            updates.put("error_message", e.getMessage());
+            updates.put(GraphFlowStateKeys.ERROR_MESSAGE, e.getMessage());
             // search_failed=true 触发 SearchResultEdgeRouter 返回 "fallback"
             // 等价于手写版：state.setStepStatus(SEARCH_FAILED)
-            updates.put("search_failed", Boolean.TRUE);
+            updates.put(GraphFlowStateKeys.SEARCH_FAILED, Boolean.TRUE);
             log.warn("SearchNodeAction 执行失败，error_message={}", e.getMessage());
         }
         return CompletableFuture.completedFuture(updates);

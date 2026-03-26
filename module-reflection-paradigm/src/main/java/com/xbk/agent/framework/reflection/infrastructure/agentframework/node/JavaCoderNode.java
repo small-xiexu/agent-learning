@@ -2,6 +2,7 @@ package com.xbk.agent.framework.reflection.infrastructure.agentframework.node;
 
 import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.action.AsyncNodeAction;
+import com.xbk.agent.framework.reflection.infrastructure.agentframework.support.ReflectionStateKeys;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
@@ -54,11 +55,11 @@ public class JavaCoderNode implements AsyncNodeAction {
     @Override
     public CompletableFuture<Map<String, Object>> apply(OverAllState state) {
         String prompt = CODER_PROMPT_TEMPLATE
-                .replace("{input}", state.value("input", ""))
-                .replace("{current_code}", state.value("current_code", ""))
-                .replace("{review_feedback}", state.value("review_feedback", ""));
+                .replace("{input}", state.value(ReflectionStateKeys.INPUT, ""))
+                .replace("{current_code}", state.value(ReflectionStateKeys.CURRENT_CODE, ""))
+                .replace("{review_feedback}", state.value(ReflectionStateKeys.REVIEW_FEEDBACK, ""));
         ChatResponse response = chatModel.call(new Prompt(prompt));
         String text = response.getResult().getOutput().getText();
-        return CompletableFuture.completedFuture(Map.of("current_code", text == null ? "" : text));
+        return CompletableFuture.completedFuture(Map.of(ReflectionStateKeys.CURRENT_CODE, text == null ? "" : text));
     }
 }

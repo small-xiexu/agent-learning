@@ -4,6 +4,7 @@ import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.exception.GraphRunnerException;
 import com.alibaba.cloud.ai.graph.agent.ReactAgent;
 import com.alibaba.cloud.ai.graph.agent.flow.agent.SequentialAgent;
+import com.xbk.agent.framework.planreplan.infrastructure.agentframework.support.PlanReplanStateKeys;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.messages.AssistantMessage;
 
@@ -18,9 +19,6 @@ import java.util.Map;
  * @author xiexu
  */
 public class AlibabaSequentialPlanAndSolveAgent {
-
-    private static final String PLAN_RESULT_KEY = "plan_result";
-    private static final String FINAL_ANSWER_KEY = "final_answer";
 
     private final ReactAgent plannerAgent;
     private final ReactAgent executorAgent;
@@ -62,13 +60,13 @@ public class AlibabaSequentialPlanAndSolveAgent {
             // 这里用 orElseThrow(...) 做 fail fast：
             // 如果整条链执行完却没有任何状态产出，说明这次调用不符合我们对 SequentialAgent 的预期，
             // 那就立刻抛异常，而不是带着一个空结果继续往下走。
-            state = sequentialAgent.invoke(Map.of("input", question))
+            state = sequentialAgent.invoke(Map.of(PlanReplanStateKeys.INPUT, question))
                     .orElseThrow(() -> new IllegalStateException("SequentialAgent did not return state"));
         } catch (GraphRunnerException exception) {
             throw new IllegalStateException("SequentialAgent execution failed", exception);
         }
-        String planResult = extractStateText(state, PLAN_RESULT_KEY);
-        String finalAnswer = extractStateText(state, FINAL_ANSWER_KEY);
+        String planResult = extractStateText(state, PlanReplanStateKeys.PLAN_RESULT);
+        String finalAnswer = extractStateText(state, PlanReplanStateKeys.FINAL_ANSWER);
         return new RunResult(question, planResult, finalAnswer, state);
     }
 
@@ -116,7 +114,7 @@ public class AlibabaSequentialPlanAndSolveAgent {
                         请把输入问题拆成清晰的编号步骤，必须使用规范编号列表输出，不要附加多余解释。
                         """)
                 .instruction("请基于这个问题生成执行计划：{input}")
-                .outputKey(PLAN_RESULT_KEY)
+                .outputKey(PlanReplanStateKeys.PLAN_RESULT)
                 // 这里显式关闭内容继承，让 Planner 只看当前输入和自己的指令。
                 .includeContents(false)
                 // 这里关闭中间推理回传，强调企业场景下默认只传结果，不传隐藏思维。
@@ -147,7 +145,7 @@ public class AlibabaSequentialPlanAndSolveAgent {
 
                         请根据这份计划完成求解，并直接给出最终答案。
                         """)
-                .outputKey(FINAL_ANSWER_KEY)
+                .outputKey(PlanReplanStateKeys.FINAL_ANSWER)
                 // 这里同样关闭父流程内容拼接，避免 Executor 被无关历史消息污染。
                 .includeContents(false)
                 // 这里只把 final_answer 写入状态，不把中间 reasoning 暴露给父流程。

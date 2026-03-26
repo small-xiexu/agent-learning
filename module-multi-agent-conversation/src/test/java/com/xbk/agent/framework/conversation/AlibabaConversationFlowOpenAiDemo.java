@@ -6,6 +6,7 @@ import com.xbk.agent.framework.conversation.api.ConversationRunResult;
 import com.xbk.agent.framework.conversation.config.OpenAiConversationDemoPropertySupport;
 import com.xbk.agent.framework.conversation.config.OpenAiConversationDemoTestConfig;
 import com.xbk.agent.framework.conversation.infrastructure.agentframework.AlibabaConversationFlowAgent;
+import com.xbk.agent.framework.conversation.infrastructure.agentframework.support.ConversationStateKeys;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.WebApplicationType;
@@ -53,7 +54,7 @@ class AlibabaConversationFlowOpenAiDemo {
             assertFalse(result.getFinalPythonScript().isBlank());
             assertFalse(result.getTranscript().isEmpty());
             assertTrue(result.getFlowState().isPresent());
-            assertTrue(result.getFlowState().get().value("current_python_script").isPresent());
+            assertTrue(result.getFlowState().get().value(ConversationStateKeys.CURRENT_PYTHON_SCRIPT).isPresent());
         }
     }
 

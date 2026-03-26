@@ -2,6 +2,7 @@ package com.xbk.agent.framework.reflection.infrastructure.agentframework.node;
 
 import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.action.AsyncNodeAction;
+import com.xbk.agent.framework.reflection.infrastructure.agentframework.support.ReflectionStateKeys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.model.ChatModel;
@@ -53,13 +54,13 @@ public class JavaReviewerNode implements AsyncNodeAction {
     @Override
     public CompletableFuture<Map<String, Object>> apply(OverAllState state) {
         String prompt = REVIEWER_PROMPT_TEMPLATE
-                .replace("{input}", state.value("input", ""))
-                .replace("{current_code}", state.value("current_code", ""));
+                .replace("{input}", state.value(ReflectionStateKeys.INPUT, ""))
+                .replace("{current_code}", state.value(ReflectionStateKeys.CURRENT_CODE, ""));
         ChatResponse response = chatModel.call(new Prompt(prompt));
         // 取出 reviewer 本轮返回的自然语言评审意见文本。
         String text = response.getResult().getOutput().getText();
         // 从全局状态读取当前已完成的评审轮次；首次进入时默认从 0 开始。
-        int currentIterationCount = state.value("iteration_count", Integer.class).orElse(Integer.valueOf(0));
+        int currentIterationCount = state.value(ReflectionStateKeys.ITERATION_COUNT, Integer.class).orElse(Integer.valueOf(0));
         int nextIterationCount = currentIterationCount + 1;
         LOGGER.info("reviewer completed: previousIterationCount={}, nextIterationCount={}, reviewFeedbackPreview={}",
                 currentIterationCount,
@@ -69,8 +70,8 @@ public class JavaReviewerNode implements AsyncNodeAction {
         // 1. review_feedback 保存本轮最新评审意见，避免 text 为 null；
         // 2. iteration_count 在当前轮次基础上加 1，表示本轮 reviewer 已执行完成。
         return CompletableFuture.completedFuture(Map.of(
-                "review_feedback", text == null ? "" : text,
-                "iteration_count", nextIterationCount));
+                ReflectionStateKeys.REVIEW_FEEDBACK, text == null ? "" : text,
+                ReflectionStateKeys.ITERATION_COUNT, nextIterationCount));
     }
 
     /**

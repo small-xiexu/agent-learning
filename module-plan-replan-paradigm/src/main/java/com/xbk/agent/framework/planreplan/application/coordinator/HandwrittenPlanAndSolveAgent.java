@@ -40,17 +40,21 @@ public class HandwrittenPlanAndSolveAgent {
      */
     public RunResult run(String question) {
         String conversationId = "handwritten-plan-solve-" + UUID.randomUUID();
+        // Planner 和后续每一步 Executor 共用同一个 conversationId，
+        // 这样整次 Plan-and-Solve 运行在日志和底层 provider 视角里就是同一条连续会话。
         List<PlanStep> plan = planner.plan(question, conversationId);
         List<StepExecutionRecord> history = new ArrayList<StepExecutionRecord>();
 
-        // 这里的历史状态是手写版的核心：
-        // 每执行完一步，都由 Java 代码显式把结果追加到 history，
-        // 下一轮再把 history 重新拼回 Prompt，控制权完全在运行时代码里。
+        // 手写版的关键不是“有一个 plan”，而是“每执行完一步都把阶段结果显式写回 history”。
+        // 下一步执行时，Executor 会重新消费 question + plan + history，
+        // 相当于由 Java 代码手动维护“当前已经完成到哪里”的运行时事实。
         for (PlanStep step : plan) {
             String stepResult = executor.execute(question, plan, history, step, conversationId);
             history.add(new StepExecutionRecord(step, stepResult));
         }
 
+        // 这个示例把最后一步结果直接视为最终答案，
+        // 目的是让学习者清楚看到“最终答案其实就是计划执行链路的最后一个阶段产物”。
         String finalAnswer = history.isEmpty() ? "" : history.getLast().getStepResult();
         return new RunResult(question, plan, history, finalAnswer);
     }

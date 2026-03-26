@@ -15,6 +15,7 @@ import com.xbk.agent.framework.planreplan.application.executor.HandwrittenPlanne
 import com.xbk.agent.framework.planreplan.domain.execution.StepExecutionRecord;
 import com.xbk.agent.framework.planreplan.domain.plan.PlanStep;
 import com.xbk.agent.framework.planreplan.infrastructure.agentframework.AlibabaSequentialPlanAndSolveAgent;
+import com.xbk.agent.framework.planreplan.infrastructure.agentframework.support.PlanReplanStateKeys;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.model.ChatModel;
@@ -75,16 +76,16 @@ class PlanAndSolveAppleProblemDemoTest {
 
         assertTrue(result.getPlanResult().contains("1. 读取周一卖出苹果数量。"));
         assertTrue(result.getFinalAnswer().contains("70"));
-        assertEquals("plan_result", agent.getPlannerAgent().getOutputKey());
-        assertEquals("final_answer", agent.getExecutorAgent().getOutputKey());
+        assertEquals(PlanReplanStateKeys.PLAN_RESULT, agent.getPlannerAgent().getOutputKey());
+        assertEquals(PlanReplanStateKeys.FINAL_ANSWER, agent.getExecutorAgent().getOutputKey());
         assertFalse(agent.getPlannerAgent().isIncludeContents());
         assertFalse(agent.getExecutorAgent().isIncludeContents());
         assertFalse(agent.getPlannerAgent().isReturnReasoningContents());
         assertFalse(agent.getExecutorAgent().isReturnReasoningContents());
-        assertTrue(result.getState().value("plan_result").isPresent());
-        assertTrue(result.getState().value("final_answer").isPresent());
-        assertTrue(result.getState().value("plan_result").orElseThrow() instanceof AssistantMessage);
-        assertTrue(result.getState().value("final_answer").orElseThrow() instanceof AssistantMessage);
+        assertTrue(result.getState().value(PlanReplanStateKeys.PLAN_RESULT).isPresent());
+        assertTrue(result.getState().value(PlanReplanStateKeys.FINAL_ANSWER).isPresent());
+        assertTrue(result.getState().value(PlanReplanStateKeys.PLAN_RESULT).orElseThrow() instanceof AssistantMessage);
+        assertTrue(result.getState().value(PlanReplanStateKeys.FINAL_ANSWER).orElseThrow() instanceof AssistantMessage);
     }
 
     /**

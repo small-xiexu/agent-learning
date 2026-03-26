@@ -15,6 +15,7 @@ import com.xbk.agent.framework.reflection.application.executor.HandwrittenJavaRe
 import com.xbk.agent.framework.reflection.domain.memory.ReflectionMemory;
 import com.xbk.agent.framework.reflection.domain.memory.ReflectionTurnRecord;
 import com.xbk.agent.framework.reflection.infrastructure.agentframework.AlibabaReflectionFlowAgent;
+import com.xbk.agent.framework.reflection.infrastructure.agentframework.support.ReflectionStateKeys;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.model.ChatModel;
@@ -76,9 +77,9 @@ class ReflectionPrimeGenerationDemoTest {
         assertTrue(result.getFinalCode().contains("boolean[] composite"));
         assertTrue(result.getFinalReview().contains("无需改进"));
         assertEquals(2, result.getIterationCount());
-        assertTrue(result.getState().value("current_code").isPresent());
-        assertTrue(result.getState().value("review_feedback").isPresent());
-        assertTrue(result.getState().value("iteration_count").isPresent());
+        assertTrue(result.getState().value(ReflectionStateKeys.CURRENT_CODE).isPresent());
+        assertTrue(result.getState().value(ReflectionStateKeys.REVIEW_FEEDBACK).isPresent());
+        assertTrue(result.getState().value(ReflectionStateKeys.ITERATION_COUNT).isPresent());
         assertEquals("java-reflection-coder-agent", agent.getJavaCoderAgent().name());
         assertEquals("java-reflection-reviewer-agent", agent.getJavaReviewerAgent().name());
         assertFalse(agent.getJavaCoderAgent().isReturnReasoningContents());

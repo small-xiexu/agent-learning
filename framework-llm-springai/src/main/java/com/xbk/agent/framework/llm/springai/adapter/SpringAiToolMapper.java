@@ -44,6 +44,8 @@ public class SpringAiToolMapper {
      * @return ToolCallback
      */
     public ToolCallback toToolCallback(ToolDefinition toolDefinition) {
+        // 这里创建的 ToolCallback 主要承担“向 Spring AI 暴露工具 schema”的职责，
+        // 不是在这一层真正执行工具。
         org.springframework.ai.tool.definition.ToolDefinition springDefinition = DefaultToolDefinition.builder()
                 .name(toolDefinition.getName())
                 .description(toolDefinition.getDescription())
@@ -64,6 +66,9 @@ public class SpringAiToolMapper {
 
             @Override
             public String call(String toolInput) {
+                // 真正的工具执行统一走 framework-core 的 ToolRegistry。
+                // 对当前适配层来说，Spring AI 只需要知道“有哪些工具、参数长什么样”，
+                // 不应该绕过项目抽象直接在这里调用工具实现。
                 throw new UnsupportedOperationException("framework-core only exposes tool schema to Spring AI");
             }
         };
@@ -94,6 +99,8 @@ public class SpringAiToolMapper {
      */
     public String toInputSchema(ToolDefinition toolDefinition) {
         if (toolDefinition.getInputSchema().isEmpty()) {
+            // 对没有显式参数的工具，也统一返回 object schema，
+            // 这样 provider 侧看到的工具定义仍然是完整且合法的函数签名。
             return "{\"type\":\"object\",\"properties\":{}}";
         }
         return toJsonValue(toolDefinition.getInputSchema());
@@ -116,6 +123,7 @@ public class SpringAiToolMapper {
             return String.valueOf(value);
         }
         if (value instanceof Map<?, ?> mapValue) {
+            // LinkedHashMap 顺序会被保留下来，便于输出的 schema 文本尽量稳定、可比对。
             StringBuilder builder = new StringBuilder();
             builder.append("{");
             boolean first = true;
@@ -156,6 +164,8 @@ public class SpringAiToolMapper {
      * @return 转义后的文本
      */
     private String escapeJson(String text) {
+        // 这里只做最小必要转义，因为这层目标是把通用对象稳定序列化成 schema 文本，
+        // 而不是实现一套完整 JSON 库。
         return text
                 .replace("\\", "\\\\")
                 .replace("\"", "\\\"");

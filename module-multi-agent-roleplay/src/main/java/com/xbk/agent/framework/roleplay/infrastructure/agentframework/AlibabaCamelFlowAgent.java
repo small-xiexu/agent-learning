@@ -17,6 +17,7 @@ import com.xbk.agent.framework.roleplay.domain.role.CamelRoleContract;
 import com.xbk.agent.framework.roleplay.domain.role.CamelRoleType;
 import com.xbk.agent.framework.roleplay.infrastructure.agentframework.node.CamelProgrammerHandoffNode;
 import com.xbk.agent.framework.roleplay.infrastructure.agentframework.node.CamelTraderHandoffNode;
+import com.xbk.agent.framework.roleplay.infrastructure.agentframework.support.CamelStateKeys;
 import com.xbk.agent.framework.roleplay.infrastructure.agentframework.support.CamelTranscriptStateSupport;
 import com.xbk.agent.framework.roleplay.support.CamelGatewayBackedChatModel;
 import org.springframework.ai.chat.model.ChatModel;
@@ -41,8 +42,6 @@ public class AlibabaCamelFlowAgent extends FlowAgent {
     private static final String FLOW_NAME = "alibaba-camel-flow-agent";
     private static final String TRADER_NODE = "trader_handoff_node";
     private static final String PROGRAMMER_NODE = "programmer_handoff_node";
-    private static final String CURRENT_JAVA_CODE_KEY = "current_java_code";
-
     /**
      * 统一网关，所有节点最终都从这里发起模型调用。
      */
@@ -152,35 +151,35 @@ public class AlibabaCamelFlowAgent extends FlowAgent {
         try {
             Map<String, Object> input = new LinkedHashMap<String, Object>();
             // 原始协作任务，所有节点都会围绕它继续推进。
-            input.put("input", task);
+            input.put(CamelStateKeys.INPUT, task);
             // 本次图运行的会话唯一标识，用来把多轮 handoff 串在同一条会话链路里。
-            input.put("conversation_id", FLOW_NAME + "-conversation-" + UUID.randomUUID());
+            input.put(CamelStateKeys.CONVERSATION_ID, FLOW_NAME + "-conversation-" + UUID.randomUUID());
             // 当前默认由交易员先接管控制权，负责发起第一棒需求。
-            input.put("active_role", CamelRoleType.TRADER.getStateValue());
+            input.put(CamelStateKeys.ACTIVE_ROLE, CamelRoleType.TRADER.getStateValue());
             // 当前已执行的总轮次数，后面会用它控制最大轮次上限。
-            input.put("turn_count", Integer.valueOf(0));
+            input.put(CamelStateKeys.TURN_COUNT, Integer.valueOf(0));
             // 交给交易员节点消费的 baton，默认先为空，等待程序员回写。
-            input.put("message_for_trader", "");
+            input.put(CamelStateKeys.MESSAGE_FOR_TRADER, "");
             // 交给程序员节点消费的 baton，默认先为空，等待交易员回写。
-            input.put("message_for_programmer", "");
+            input.put(CamelStateKeys.MESSAGE_FOR_PROGRAMMER, "");
             // 最近一次交易员的原始输出，便于状态审计和后续条件判断。
-            input.put("last_trader_output", "");
+            input.put(CamelStateKeys.LAST_TRADER_OUTPUT, "");
             // 最近一次程序员的原始输出，便于状态审计和后续条件判断。
-            input.put("last_programmer_output", "");
+            input.put(CamelStateKeys.LAST_PROGRAMMER_OUTPUT, "");
             // 当前沉淀出的最新 Java 代码，作为最终结果的直接来源。
-            input.put(CURRENT_JAVA_CODE_KEY, "");
+            input.put(CamelStateKeys.CURRENT_JAVA_CODE, "");
             // 图运行是否已经满足结束条件，默认先不结束。
-            input.put("done", Boolean.FALSE);
+            input.put(CamelStateKeys.DONE, Boolean.FALSE);
             // 结束原因，只有真正停止时才会被某个节点回写。
-            input.put("stop_reason", "");
+            input.put(CamelStateKeys.STOP_REASON, "");
             // 完整 transcript 轨迹，供调试、审计和最终结果回放使用。
-            input.put("transcript", List.of());
+            input.put(CamelStateKeys.TRANSCRIPT, List.of());
             Optional<OverAllState> optionalState = invoke(input);
             OverAllState state = optionalState.orElseThrow(
                     () -> new IllegalStateException("Camel FlowAgent did not return state"));
-            String finalScript = state.value(CURRENT_JAVA_CODE_KEY, "");
-            String stopReason = state.value("stop_reason", "");
-            int turnCount = state.value("turn_count", Integer.class).orElse(Integer.valueOf(0));
+            String finalScript = state.value(CamelStateKeys.CURRENT_JAVA_CODE, "");
+            String stopReason = state.value(CamelStateKeys.STOP_REASON, "");
+            int turnCount = state.value(CamelStateKeys.TURN_COUNT, Integer.class).orElse(Integer.valueOf(0));
             if (stopReason.isBlank() && turnCount >= maxTurns) {
                 stopReason = "MAX_TURNS_REACHED";
             }
@@ -253,8 +252,8 @@ public class AlibabaCamelFlowAgent extends FlowAgent {
      * @return 是否停止
      */
     private boolean shouldStop(OverAllState state) {
-        boolean done = state.value("done", Boolean.class).orElse(Boolean.FALSE);
-        int turnCount = state.value("turn_count", Integer.class).orElse(Integer.valueOf(0));
+        boolean done = state.value(CamelStateKeys.DONE, Boolean.class).orElse(Boolean.FALSE);
+        int turnCount = state.value(CamelStateKeys.TURN_COUNT, Integer.class).orElse(Integer.valueOf(0));
         return done || turnCount >= maxTurns;
     }
 
@@ -267,7 +266,7 @@ public class AlibabaCamelFlowAgent extends FlowAgent {
     private CamelRoleType determineStopRole(OverAllState state) {
         String stopReason = state.value("stop_reason", "");
         if (stopReason != null && !stopReason.isBlank()) {
-            return CamelRoleType.fromStateValue(state.value("active_role", CamelRoleType.TRADER.getStateValue()));
+            return CamelRoleType.fromStateValue(state.value(CamelStateKeys.ACTIVE_ROLE, CamelRoleType.TRADER.getStateValue()));
         }
         List<CamelDialogueTurn> transcript = extractTranscript(state);
         if (transcript.isEmpty()) {
@@ -283,7 +282,7 @@ public class AlibabaCamelFlowAgent extends FlowAgent {
      * @return transcript
      */
     private List<CamelDialogueTurn> extractTranscript(OverAllState state) {
-        return List.copyOf(CamelTranscriptStateSupport.readTranscript(state.value("transcript").orElse(List.of())));
+        return List.copyOf(CamelTranscriptStateSupport.readTranscript(state.value(CamelStateKeys.TRANSCRIPT).orElse(List.of())));
     }
 
     /**

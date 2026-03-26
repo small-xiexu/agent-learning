@@ -9,6 +9,8 @@ import com.xbk.agent.framework.core.llm.model.LlmResponse;
 import com.xbk.agent.framework.core.memory.Message;
 import lombok.extern.slf4j.Slf4j;
 
+import com.xbk.agent.framework.graphflow.framework.support.GraphFlowStateKeys;
+
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -59,8 +61,8 @@ public class FallbackNodeAction implements AsyncNodeAction {
      */
     @Override
     public CompletableFuture<Map<String, Object>> apply(OverAllState state) {
-        String userQuery = state.value("user_query", String.class).orElse("");
-        String errorMessage = state.value("error_message", String.class).orElse("未知错误");
+        String userQuery = state.value(GraphFlowStateKeys.USER_QUERY, String.class).orElse("");
+        String errorMessage = state.value(GraphFlowStateKeys.ERROR_MESSAGE, String.class).orElse("未知错误");
         log.warn("FallbackNodeAction 触发，搜索失败原因：{}", errorMessage);
 
         String prompt = "搜索工具当前不可用，请仅凭你的知识对以下问题给出尽可能准确的回答，"
@@ -86,6 +88,6 @@ public class FallbackNodeAction implements AsyncNodeAction {
         log.info("FallbackNodeAction 执行完毕，降级回答已生成");
         // 与 AnswerNodeAction 相同，无需设置终止标记
         // addEdge("fallback", StateGraph.END) 已声明此节点后自动结束
-        return CompletableFuture.completedFuture(Map.of("final_answer", fallbackAnswer));
+        return CompletableFuture.completedFuture(Map.of(GraphFlowStateKeys.FINAL_ANSWER, fallbackAnswer));
     }
 }

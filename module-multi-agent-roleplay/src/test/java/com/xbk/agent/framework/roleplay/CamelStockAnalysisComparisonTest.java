@@ -18,6 +18,7 @@ import com.xbk.agent.framework.roleplay.domain.memory.CamelDialogueTurn;
 import com.xbk.agent.framework.roleplay.domain.memory.CamelConversationMemory;
 import com.xbk.agent.framework.roleplay.domain.role.CamelRoleType;
 import com.xbk.agent.framework.roleplay.infrastructure.agentframework.AlibabaCamelFlowAgent;
+import com.xbk.agent.framework.roleplay.infrastructure.agentframework.support.CamelStateKeys;
 import com.xbk.agent.framework.roleplay.infrastructure.agentframework.support.CamelTranscriptStateSupport;
 import org.junit.jupiter.api.Test;
 
@@ -87,11 +88,11 @@ class CamelStockAnalysisComparisonTest {
         assertTrue(result.getFinalJavaCode().contains("calculateMovingAverage"));
         assertEquals(CamelRoleType.TRADER, result.getStopRole());
         assertTrue(result.getStopReason().contains("<CAMEL_TASK_DONE>"));
-        assertTrue(state.value("done", Boolean.class).orElse(Boolean.FALSE));
-        assertEquals("trader", state.value("active_role", ""));
-        assertTrue(state.value("current_java_code", "").contains("calculateMovingAverage"));
-        assertTrue(state.value("last_programmer_output", "").contains("HttpClient"));
-        assertEquals(Integer.valueOf(5), state.value("turn_count", Integer.class).orElseThrow());
+        assertTrue(state.value(CamelStateKeys.DONE, Boolean.class).orElse(Boolean.FALSE));
+        assertEquals(CamelRoleType.TRADER.getStateValue(), state.value(CamelStateKeys.ACTIVE_ROLE, ""));
+        assertTrue(state.value(CamelStateKeys.CURRENT_JAVA_CODE, "").contains("calculateMovingAverage"));
+        assertTrue(state.value(CamelStateKeys.LAST_PROGRAMMER_OUTPUT, "").contains("HttpClient"));
+        assertEquals(Integer.valueOf(5), state.value(CamelStateKeys.TURN_COUNT, Integer.class).orElseThrow());
         assertEquals("camel-stock-trader-agent", agent.getTraderAgent().name());
         assertEquals("camel-stock-programmer-agent", agent.getProgrammerAgent().name());
         assertFalse(agent.getTraderAgent().isReturnReasoningContents());

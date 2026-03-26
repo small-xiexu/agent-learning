@@ -71,8 +71,9 @@ public class HandwrittenCamelAgent {
         String latestJavaCode = "";
 
         while (memory.size() < maxTurns) {
-            // CAMEL 的手写版关键就在这里：
-            // 先让交易员基于当前 transcript 提需求，再把结果回填 memory，随后把同一份共享 transcript 交给程序员继续消费。
+            // 第一棒永远由 Trader 先说。
+            // 他读取的是完整共享 transcript，因此每一轮都能看到程序员上一棒到底交付了什么，
+            // 再决定继续提需求、补约束，还是宣布任务完成。
             String rawTraderOutput = traderRole.reply(task, memory, conversationId);
             int traderTurnCount = memory.countTurnsByRole(CamelRoleType.TRADER) + 1;
             String traderOutput = CamelPromptTemplates.normalizeTraderOutput(rawTraderOutput, traderTurnCount);
@@ -84,13 +85,16 @@ public class HandwrittenCamelAgent {
             if (memory.size() >= maxTurns) {
                 break;
             }
-            // 程序员永远只看“当前视角下的最后一棒”，并把自己的代码产物作为下一轮交易员审查的输入。
+            // 第二棒交给 Programmer。
+            // 他同样消费共享 transcript，但职责更聚焦：把最新需求落成代码，并把代码交回 transcript，
+            // 让下一轮 Trader 把它当成待验收产物继续审视。
             String programmerOutput = CamelPromptTemplates.stripTaskDoneMarker(
                     programmerRole.reply(task, memory, conversationId));
             memory.addTurn(CamelRoleType.PROGRAMMER, programmerOutput);
             latestJavaCode = CamelPromptTemplates.stripTaskDoneMarker(programmerOutput);
         }
 
+        // 超过最大轮次时不丢弃当前成果，而是返回最近一次程序员交付的代码和完整 transcript。
         return buildResult(task, latestJavaCode, lastRole(), "MAX_TURNS_REACHED");
     }
 

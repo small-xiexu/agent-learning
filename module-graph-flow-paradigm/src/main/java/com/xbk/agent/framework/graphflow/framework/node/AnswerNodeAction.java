@@ -9,6 +9,8 @@ import com.xbk.agent.framework.core.llm.model.LlmResponse;
 import com.xbk.agent.framework.core.memory.Message;
 import lombok.extern.slf4j.Slf4j;
 
+import com.xbk.agent.framework.graphflow.framework.support.GraphFlowStateKeys;
+
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -54,8 +56,8 @@ public class AnswerNodeAction implements AsyncNodeAction {
      */
     @Override
     public CompletableFuture<Map<String, Object>> apply(OverAllState state) {
-        String userQuery = state.value("user_query", String.class).orElse("");
-        String searchResults = state.value("search_results", String.class).orElse("");
+        String userQuery = state.value(GraphFlowStateKeys.USER_QUERY, String.class).orElse("");
+        String searchResults = state.value(GraphFlowStateKeys.SEARCH_RESULTS, String.class).orElse("");
         log.info("AnswerNodeAction 开始执行，基于搜索结果生成回答");
 
         String prompt = "请根据以下搜索结果，对用户的问题给出简洁、准确的回答。\n\n"
@@ -80,6 +82,6 @@ public class AnswerNodeAction implements AsyncNodeAction {
 
         log.info("AnswerNodeAction 执行完毕，final_answer 已生成");
         // 无需 setStepStatus(END)，框架通过 addEdge("answer", StateGraph.END) 自动终止
-        return CompletableFuture.completedFuture(Map.of("final_answer", finalAnswer));
+        return CompletableFuture.completedFuture(Map.of(GraphFlowStateKeys.FINAL_ANSWER, finalAnswer));
     }
 }

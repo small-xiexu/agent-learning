@@ -9,6 +9,8 @@ import com.xbk.agent.framework.core.llm.model.LlmResponse;
 import com.xbk.agent.framework.core.memory.Message;
 import lombok.extern.slf4j.Slf4j;
 
+import com.xbk.agent.framework.graphflow.framework.support.GraphFlowStateKeys;
+
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -56,7 +58,7 @@ public class UnderstandNodeAction implements AsyncNodeAction {
     @Override
     public CompletableFuture<Map<String, Object>> apply(OverAllState state) {
         // 从 OverAllState 中读取字段 —— 等价于手写版 state.getUserQuery()
-        String userQuery = state.value("user_query", String.class).orElse("");
+        String userQuery = state.value(GraphFlowStateKeys.USER_QUERY, String.class).orElse("");
         log.info("UnderstandNodeAction 开始执行，user_query={}", userQuery);
 
         String prompt = "请从以下用户提问中提取最适合用于搜索引擎查询的关键词，只输出关键词本身，不要有任何解释：\n"
@@ -83,6 +85,6 @@ public class UnderstandNodeAction implements AsyncNodeAction {
         // 只返回本节点变更的字段，框架做增量 merge ——
         // 等价于手写版：state.setSearchQuery(searchQuery); state.setStepStatus(UNDERSTOOD);
         // 注意：框架版无需显式设置 step_status，路由由 addEdge 声明决定，不依赖状态字段
-        return CompletableFuture.completedFuture(Map.of("search_query", searchQuery));
+        return CompletableFuture.completedFuture(Map.of(GraphFlowStateKeys.SEARCH_QUERY, searchQuery));
     }
 }

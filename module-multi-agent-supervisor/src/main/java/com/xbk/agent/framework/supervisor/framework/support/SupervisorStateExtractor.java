@@ -43,6 +43,8 @@ public final class SupervisorStateExtractor {
         if (value == null) {
             return "";
         }
+        // 框架状态里的某个 outputKey 可能存的是 Spring AI Message，也可能已经是普通字符串。
+        // 这里统一抽成纯文本，避免上层结果对象被底层状态表示方式绑死。
         if (value instanceof org.springframework.ai.chat.messages.Message message) {
             return message.getText();
         }
@@ -61,6 +63,8 @@ public final class SupervisorStateExtractor {
         if (!(value instanceof List<?> messages)) {
             return routeTrail;
         }
+        // 框架版把主管和 Worker 的输出都混在同一份消息流里，
+        // 因此这里要再次筛选，只把“主管的路由数组消息”提取成 routeTrail。
         for (Object rawMessage : messages) {
             // 框架消息列表里既有主路由输出，也有 Worker 输出；只有主路由的数组文本才代表下一跳。
             if (rawMessage instanceof AssistantMessage assistantMessage) {
@@ -82,6 +86,8 @@ public final class SupervisorStateExtractor {
         if (!(value instanceof List<?> messages)) {
             return convertedMessages;
         }
+        // 这里做的不是简单复制，而是把 Spring AI Alibaba 的消息类型重新投影成项目统一 Message，
+        // 方便手写版、框架版最终都返回同构的 scratchpad 历史。
         for (Object rawMessage : messages) {
             if (rawMessage instanceof org.springframework.ai.chat.messages.Message springMessage) {
                 convertedMessages.add(convertToFrameworkMessage(springMessage));
@@ -106,6 +112,8 @@ public final class SupervisorStateExtractor {
                 continue;
             }
             stepIndex++;
+            // 框架版没有像手写版那样显式逐轮 append StepRecord，
+            // 因此这里只能根据 routeTrail + outputKey 反推出一份等价的步骤审计视图。
             stepRecords.add(new SupervisorStepRecord(
                     stepIndex,
                     workerType,
@@ -127,6 +135,8 @@ public final class SupervisorStateExtractor {
             return workers;
         }
         try {
+            // 框架 Supervisor 的路由输出约定为 JSON 数组文本，例如 ["writer_agent"] 或 ["FINISH"]。
+            // 只有符合这套协议的消息，才会被视为真正的路由决策。
             Object parsed = OBJECT_MAPPER.readValue(text.trim(), List.class);
             if (!(parsed instanceof List<?> rawRoutes)) {
                 return workers;
@@ -151,6 +161,8 @@ public final class SupervisorStateExtractor {
      * @return 统一 Message
      */
     private static Message convertToFrameworkMessage(org.springframework.ai.chat.messages.Message springMessage) {
+        // 这里生成的是“统一审计视图”，不是原封不动保留底层消息对象。
+        // conversationId 使用固定占位值，是因为框架状态里的消息未必保留了项目侧会话标识。
         return Message.builder()
                 .messageId("message-" + UUID.randomUUID())
                 .conversationId("framework-supervisor-state")
@@ -190,6 +202,7 @@ public final class SupervisorStateExtractor {
      */
     private static String resolveContent(org.springframework.ai.chat.messages.Message springMessage) {
         if (springMessage instanceof ToolResponseMessage toolResponseMessage) {
+            // ToolResponseMessage 本身不是单一字符串，这里转成文本是为了统一写入审计结果。
             return String.valueOf(toolResponseMessage.getResponses());
         }
         if (springMessage instanceof AbstractMessage abstractMessage) {

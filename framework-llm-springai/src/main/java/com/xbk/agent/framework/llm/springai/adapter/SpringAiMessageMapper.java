@@ -41,6 +41,9 @@ public class SpringAiMessageMapper {
             return toAssistantMessage(message);
         }
         if (message.getRole() == MessageRole.TOOL) {
+            // TOOL 消息不是普通文本回复，而是“对某个 tool_call 的回执”。
+            // 这里必须把 toolCallId、toolName 和执行结果重新装回 Spring AI 的 ToolResponseMessage，
+            // 下游 provider 才能把它识别成一次完整的工具调用闭环。
             ToolResponseMessage.ToolResponse response = new ToolResponseMessage.ToolResponse(
                     message.getToolCallId(),
                     message.getName(),
@@ -60,6 +63,9 @@ public class SpringAiMessageMapper {
      */
     @SuppressWarnings("unchecked")
     private AssistantMessage toAssistantMessage(Message message) {
+        // 上一轮响应里的 tool_calls 会先被 ResponseMapper 暂存在 metadata 中。
+        // 这里再把它们还原成 Spring AI 的 AssistantMessage.ToolCall，
+        // 这样下一次请求发给 provider 时，assistant -> tool -> assistant 的对话链才是完整的。
         Object rawToolCalls = message.getMetadata().get(SpringAiResponseMapper.ASSISTANT_TOOL_CALLS_METADATA_KEY);
         if (!(rawToolCalls instanceof List<?> toolCallsMetadata) || toolCallsMetadata.isEmpty()) {
             return new AssistantMessage(message.getContent());
@@ -69,6 +75,7 @@ public class SpringAiMessageMapper {
             if (!(item instanceof Map<?, ?> toolCallMetadata)) {
                 continue;
             }
+            // metadata 本质上是通用 Map，需要在这里恢复成 Spring AI 期望的强类型 ToolCall 对象。
             toolCalls.add(new AssistantMessage.ToolCall(
                     valueAsString(toolCallMetadata.get("id")),
                     valueAsString(toolCallMetadata.get("type")),

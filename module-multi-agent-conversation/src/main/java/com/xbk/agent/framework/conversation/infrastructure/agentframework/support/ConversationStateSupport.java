@@ -38,6 +38,9 @@ public final class ConversationStateSupport {
      * @return 状态结构
      */
     public static List<Map<String, Object>> toStateTranscript(List<ConversationTurn> transcript) {
+        // FlowAgent 状态本质上更适合保存 Map / List 这类可序列化结构，
+        // 因此这里先把领域对象拍平成“只保留必要字段”的状态快照，
+        // 让 transcript 可以稳定写进图状态、日志或后续节点上下文。
         List<Map<String, Object>> stateTranscript = new ArrayList<Map<String, Object>>();
         for (ConversationTurn turn : transcript) {
             Map<String, Object> item = new LinkedHashMap<String, Object>();
@@ -59,6 +62,8 @@ public final class ConversationStateSupport {
         if (!(stateValue instanceof List<?>)) {
             return new ArrayList<ConversationTurn>();
         }
+        // 读取阶段再把通用状态结构恢复成领域对象，
+        // 这样上层协调器和结果对象仍然可以继续使用强类型 ConversationTurn。
         List<ConversationTurn> transcript = new ArrayList<ConversationTurn>();
         for (Object item : (List<?>) stateValue) {
             ConversationTurn turn = toTurn(item);
@@ -76,6 +81,8 @@ public final class ConversationStateSupport {
      * @return 状态结构
      */
     public static List<Map<String, Object>> toStateMessages(List<Message> sharedMessages) {
+        // sharedMessages 不直接原样塞进状态，是为了避免框架状态里混入过多 Java 对象细节。
+        // 这里保留 message 身份、角色和正文，足够支撑后续恢复和调试回放。
         List<Map<String, Object>> stateMessages = new ArrayList<Map<String, Object>>();
         for (Message message : sharedMessages) {
             Map<String, Object> item = new LinkedHashMap<String, Object>();
@@ -99,6 +106,8 @@ public final class ConversationStateSupport {
         if (!(stateValue instanceof List<?>)) {
             return new ArrayList<Message>();
         }
+        // 这里和 transcript 一样，做的是“框架状态 -> 统一消息模型”的逆变换，
+        // 保证框架版最终产出的 sharedMessages 能和手写版使用同一套 Message 类型对齐。
         List<Message> sharedMessages = new ArrayList<Message>();
         for (Object item : (List<?>) stateValue) {
             Message message = toMessage(item);
@@ -122,6 +131,7 @@ public final class ConversationStateSupport {
         if (!(item instanceof Map<?, ?>)) {
             return null;
         }
+        // 状态里保存的是字符串化 roleType，因此恢复时必须显式做一次“状态值 -> 枚举”的翻译。
         Map<?, ?> rawMap = (Map<?, ?>) item;
         ConversationRoleType roleType = ConversationRoleType.fromStateValue(String.valueOf(rawMap.get(ROLE_TYPE_KEY)));
         int turnNumber = resolveInteger(rawMap.get(TURN_NUMBER_KEY));
@@ -142,6 +152,8 @@ public final class ConversationStateSupport {
         if (!(item instanceof Map<?, ?>)) {
             return null;
         }
+        // 恢复 Message 时对缺失字段给默认值，是为了提高状态回放的容错性：
+        // 即使框架侧只保留了部分字段，也不至于让最终结果构造直接失败。
         Map<?, ?> rawMap = (Map<?, ?>) item;
         return Message.builder()
                 .messageId(resolveText(rawMap.get(MESSAGE_ID_KEY), "message-" + UUID.randomUUID()))

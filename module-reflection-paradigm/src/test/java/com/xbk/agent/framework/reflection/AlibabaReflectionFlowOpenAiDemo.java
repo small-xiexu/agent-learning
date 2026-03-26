@@ -4,6 +4,7 @@ import com.alibaba.cloud.ai.graph.OverAllState;
 import com.xbk.agent.framework.reflection.config.OpenAiReflectionDemoPropertySupport;
 import com.xbk.agent.framework.reflection.config.OpenAiReflectionDemoTestConfig;
 import com.xbk.agent.framework.reflection.infrastructure.agentframework.AlibabaReflectionFlowAgent;
+import com.xbk.agent.framework.reflection.infrastructure.agentframework.support.ReflectionStateKeys;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.model.ChatModel;
@@ -49,8 +50,8 @@ class AlibabaReflectionFlowOpenAiDemo {
 
             assertFalse(result.getFinalCode().isBlank());
             assertFalse(result.getFinalReview().isBlank());
-            assertTrue(result.getState().value("current_code").isPresent());
-            assertTrue(result.getState().value("review_feedback").isPresent());
+            assertTrue(result.getState().value(ReflectionStateKeys.CURRENT_CODE).isPresent());
+            assertTrue(result.getState().value(ReflectionStateKeys.REVIEW_FEEDBACK).isPresent());
         }
     }
 

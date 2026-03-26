@@ -6,6 +6,7 @@ import com.xbk.agent.framework.roleplay.api.CamelRunResult;
 import com.xbk.agent.framework.roleplay.config.OpenAiRolePlayDemoPropertySupport;
 import com.xbk.agent.framework.roleplay.config.OpenAiRolePlayDemoTestConfig;
 import com.xbk.agent.framework.roleplay.infrastructure.agentframework.AlibabaCamelFlowAgent;
+import com.xbk.agent.framework.roleplay.infrastructure.agentframework.support.CamelStateKeys;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.WebApplicationType;
@@ -54,7 +55,7 @@ class AlibabaCamelFlowOpenAiDemo {
             assertFalse(result.getFinalJavaCode().isBlank());
             assertFalse(result.getTranscript().isEmpty());
             assertTrue(result.getFlowState().isPresent());
-            assertTrue(result.getFlowState().get().value("current_java_code").isPresent());
+            assertTrue(result.getFlowState().get().value(CamelStateKeys.CURRENT_JAVA_CODE).isPresent());
         }
     }
 

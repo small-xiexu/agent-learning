@@ -2,6 +2,7 @@ package com.xbk.agent.framework.graphflow.framework.edge;
 
 import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.action.AsyncEdgeAction;
+import com.xbk.agent.framework.graphflow.framework.support.GraphFlowStateKeys;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.concurrent.CompletableFuture;
@@ -39,7 +40,7 @@ public class SearchResultEdgeRouter implements AsyncEdgeAction {
      */
     @Override
     public CompletableFuture<String> apply(OverAllState state) {
-        boolean searchFailed = state.value("search_failed", Boolean.class).orElse(Boolean.FALSE);
+        boolean searchFailed = state.value(GraphFlowStateKeys.SEARCH_FAILED, Boolean.class).orElse(Boolean.FALSE);
         // 等价于手写版：if (stepStatus == SEARCH_FAILED) goto fallback else goto answer
         String targetLabel = searchFailed ? "fallback" : "answer";
         log.info("SearchResultEdgeRouter 路由决策：search_failed={}，目标节点标签={}", searchFailed, targetLabel);

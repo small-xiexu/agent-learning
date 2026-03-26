@@ -5,6 +5,7 @@ import com.xbk.agent.framework.core.llm.AgentLlmGateway;
 import com.xbk.agent.framework.graphflow.config.OpenAiGraphDemoPropertySupport;
 import com.xbk.agent.framework.graphflow.config.OpenAiGraphDemoTestConfig;
 import com.xbk.agent.framework.graphflow.framework.AlibabaGraphFlowAgent;
+import com.xbk.agent.framework.graphflow.framework.support.GraphFlowStateKeys;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.WebApplicationType;
@@ -51,8 +52,8 @@ class AlibabaGraphFlowOpenAiDemo {
             assertFalse(result.getFinalAnswer().isBlank());
             assertFalse(result.getSearchResults().isBlank());
             assertFalse(result.isUsedFallback());
-            assertTrue(state.value("search_query").isPresent());
-            assertTrue(state.value("final_answer").isPresent());
+            assertTrue(state.value(GraphFlowStateKeys.SEARCH_QUERY).isPresent());
+            assertTrue(state.value(GraphFlowStateKeys.FINAL_ANSWER).isPresent());
         }
     }
 

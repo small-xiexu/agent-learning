@@ -20,6 +20,7 @@ import com.xbk.agent.framework.conversation.domain.role.ConversationRoleType;
 import com.xbk.agent.framework.conversation.infrastructure.agentframework.node.CodeReviewerNode;
 import com.xbk.agent.framework.conversation.infrastructure.agentframework.node.EngineerNode;
 import com.xbk.agent.framework.conversation.infrastructure.agentframework.node.ProductManagerNode;
+import com.xbk.agent.framework.conversation.infrastructure.agentframework.support.ConversationStateKeys;
 import com.xbk.agent.framework.conversation.infrastructure.agentframework.support.ConversationStateSupport;
 import com.xbk.agent.framework.conversation.support.ConversationGatewayBackedChatModel;
 import com.xbk.agent.framework.conversation.support.ConversationPromptTemplates;
@@ -45,8 +46,6 @@ public class AlibabaConversationFlowAgent extends FlowAgent {
     private static final String PRODUCT_MANAGER_NODE = "product_manager_node";
     private static final String ENGINEER_NODE = "engineer_node";
     private static final String CODE_REVIEWER_NODE = "code_reviewer_node";
-    private static final String CURRENT_PYTHON_SCRIPT_KEY = "current_python_script";
-
     /**
      * 统一 LLM 网关。
      */
@@ -178,35 +177,35 @@ public class AlibabaConversationFlowAgent extends FlowAgent {
             String conversationId = FLOW_NAME + "-conversation-" + UUID.randomUUID();
             Map<String, Object> input = new LinkedHashMap<String, Object>();
             // 原始任务，所有节点都围绕同一目标群聊推进。
-            input.put("input", task);
+            input.put(ConversationStateKeys.INPUT, task);
             // 统一会话标识，把整场群聊绑定到同一条上下文链路。
-            input.put("conversation_id", conversationId);
+            input.put(ConversationStateKeys.CONVERSATION_ID, conversationId);
             // 当前活动角色，初始固定为 ProductManager。
-            input.put("active_role", ConversationRoleType.PRODUCT_MANAGER.getStateValue());
+            input.put(ConversationStateKeys.ACTIVE_ROLE, ConversationRoleType.PRODUCT_MANAGER.getStateValue());
             // 已执行总轮次，用于防止群聊无限回环。
-            input.put("turn_count", Integer.valueOf(0));
+            input.put(ConversationStateKeys.TURN_COUNT, Integer.valueOf(0));
             // 各角色最近一次输出，便于调试和断言。
-            input.put("last_product_output", "");
-            input.put("last_engineer_output", "");
-            input.put("last_reviewer_output", "");
+            input.put(ConversationStateKeys.LAST_PRODUCT_OUTPUT, "");
+            input.put(ConversationStateKeys.LAST_ENGINEER_OUTPUT, "");
+            input.put(ConversationStateKeys.LAST_REVIEWER_OUTPUT, "");
             // 当前最新 Python 脚本，直接作为最终产物来源。
-            input.put(CURRENT_PYTHON_SCRIPT_KEY, "");
+            input.put(ConversationStateKeys.CURRENT_PYTHON_SCRIPT, "");
             // 审查状态，默认 pending。
-            input.put("review_status", "pending");
+            input.put(ConversationStateKeys.REVIEW_STATUS, "pending");
             // 是否已经结束。
-            input.put("done", Boolean.FALSE);
+            input.put(ConversationStateKeys.DONE, Boolean.FALSE);
             // 停止原因。
-            input.put("stop_reason", "");
+            input.put(ConversationStateKeys.STOP_REASON, "");
             // 群聊共享消息历史，这是 AutoGen 群聊最核心的公共上下文。
-            input.put("shared_messages", ConversationStateSupport.toStateMessages(List.of(buildTaskMessage(conversationId, task))));
+            input.put(ConversationStateKeys.SHARED_MESSAGES, ConversationStateSupport.toStateMessages(List.of(buildTaskMessage(conversationId, task))));
             // transcript 只用于回放和审计。
-            input.put("transcript", List.of());
+            input.put(ConversationStateKeys.TRANSCRIPT, List.of());
             Optional<OverAllState> optionalState = invoke(input);
             OverAllState state = optionalState.orElseThrow(
                     () -> new IllegalStateException("Conversation FlowAgent did not return state"));
-            String finalScript = state.value(CURRENT_PYTHON_SCRIPT_KEY, "");
-            String stopReason = state.value("stop_reason", "");
-            int turnCount = state.value("turn_count", Integer.class).orElse(Integer.valueOf(0));
+            String finalScript = state.value(ConversationStateKeys.CURRENT_PYTHON_SCRIPT, "");
+            String stopReason = state.value(ConversationStateKeys.STOP_REASON, "");
+            int turnCount = state.value(ConversationStateKeys.TURN_COUNT, Integer.class).orElse(Integer.valueOf(0));
             if (stopReason.isBlank() && turnCount >= maxTurns) {
                 stopReason = "MAX_TURNS_REACHED";
             }
@@ -300,9 +299,9 @@ public class AlibabaConversationFlowAgent extends FlowAgent {
      */
     private boolean shouldStop(OverAllState state) {
         // done 由 Reviewer 节点写入，表示当前任务是否已经被正式验收通过。
-        boolean done = state.value("done", Boolean.class).orElse(Boolean.FALSE);
+        boolean done = state.value(ConversationStateKeys.DONE, Boolean.class).orElse(Boolean.FALSE);
         // turn_count 记录整场群聊已经推进了多少轮；如果状态里还没有这个值，就从 0 开始算。
-        int turnCount = state.value("turn_count", Integer.class).orElse(Integer.valueOf(0));
+        int turnCount = state.value(ConversationStateKeys.TURN_COUNT, Integer.class).orElse(Integer.valueOf(0));
         // 只要“已经完成”或者“轮次达到上限”满足任意一个条件，就停止继续回环。
         return done || turnCount >= maxTurns;
     }
@@ -328,7 +327,7 @@ public class AlibabaConversationFlowAgent extends FlowAgent {
      * @return transcript
      */
     private List<ConversationTurn> extractTranscript(OverAllState state) {
-        return List.copyOf(ConversationStateSupport.readTranscript(state.value("transcript").orElse(List.of())));
+        return List.copyOf(ConversationStateSupport.readTranscript(state.value(ConversationStateKeys.TRANSCRIPT).orElse(List.of())));
     }
 
     /**
@@ -338,7 +337,7 @@ public class AlibabaConversationFlowAgent extends FlowAgent {
      * @return 共享消息
      */
     private List<Message> extractSharedMessages(OverAllState state) {
-        return List.copyOf(ConversationStateSupport.readSharedMessages(state.value("shared_messages").orElse(List.of())));
+        return List.copyOf(ConversationStateSupport.readSharedMessages(state.value(ConversationStateKeys.SHARED_MESSAGES).orElse(List.of())));
     }
 
     /**

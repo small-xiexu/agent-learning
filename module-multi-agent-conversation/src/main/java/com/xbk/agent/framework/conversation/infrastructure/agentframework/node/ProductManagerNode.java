@@ -10,6 +10,7 @@ import com.xbk.agent.framework.core.memory.Message;
 import com.xbk.agent.framework.conversation.domain.memory.ConversationTurn;
 import com.xbk.agent.framework.conversation.domain.role.ConversationRoleContract;
 import com.xbk.agent.framework.conversation.domain.role.ConversationRoleType;
+import com.xbk.agent.framework.conversation.infrastructure.agentframework.support.ConversationStateKeys;
 import com.xbk.agent.framework.conversation.infrastructure.agentframework.support.ConversationStateSupport;
 import com.xbk.agent.framework.conversation.support.ConversationPromptTemplates;
 
@@ -82,10 +83,10 @@ public class ProductManagerNode implements AsyncNodeAction {
     @Override
     public CompletableFuture<Map<String, Object>> apply(OverAllState state) {
         // 读取当前群聊的会话标识，保证本轮 ProductManager 发言仍然挂在同一条 conversation 上。
-        String conversationId = state.value("conversation_id", "");
+        String conversationId = state.value(ConversationStateKeys.CONVERSATION_ID, "");
         // 从共享状态里恢复所有人都能看到的群聊历史，作为本轮继续发言的公共上下文。
         List<Message> sharedMessages = ConversationStateSupport.readSharedMessages(
-                state.value("shared_messages").orElse(List.of()));
+                state.value(ConversationStateKeys.SHARED_MESSAGES).orElse(List.of()));
         // 组装当前节点要发给模型的完整消息列表。
         List<Message> requestMessages = new ArrayList<Message>();
         // 先放入 ProductManager 自己的系统提示，明确这一轮只能做需求拆解和范围收敛。
@@ -99,27 +100,27 @@ public class ProductManagerNode implements AsyncNodeAction {
         // 把 ProductManager 的本轮输出追加回共享消息历史，供后续 Engineer 和 Reviewer 继续消费。
         sharedMessages.add(buildMessage(conversationId, MessageRole.ASSISTANT, output, contract.getRoleType().getDisplayName()));
         // 从状态里恢复 transcript，用更轻量的轮次记录保留这次发言，方便日志、断言和回放。
-        List<ConversationTurn> transcript = ConversationStateSupport.readTranscript(state.value("transcript").orElse(List.of()));
+        List<ConversationTurn> transcript = ConversationStateSupport.readTranscript(state.value(ConversationStateKeys.TRANSCRIPT).orElse(List.of()));
         // 追加一条新的 ProductManager 发言记录，轮次号始终按 transcript 当前长度递增。
         transcript.add(new ConversationTurn(transcript.size() + 1, ConversationRoleType.PRODUCT_MANAGER, output));
         // 当前节点执行完成后，总轮次加一，作为下一步是否需要停止的判断依据之一。
-        int nextTurnCount = state.value("turn_count", Integer.class).orElse(Integer.valueOf(0)) + 1;
+        int nextTurnCount = state.value(ConversationStateKeys.TURN_COUNT, Integer.class).orElse(Integer.valueOf(0)) + 1;
         // 把本轮更新后的状态一次性写回给 Flow runtime，驱动后续节点继续执行。
         return CompletableFuture.completedFuture(Map.of(
                 // 记录 ProductManager 最近一次输出，便于调试和测试断言。
-                "last_product_output", output,
+                ConversationStateKeys.LAST_PRODUCT_OUTPUT, output,
                 // ProductManager 说完之后，下一位固定轮到 Engineer。
-                "active_role", ConversationRoleType.ENGINEER.getStateValue(),
+                ConversationStateKeys.ACTIVE_ROLE, ConversationRoleType.ENGINEER.getStateValue(),
                 // 写回更新后的总轮次。
-                "turn_count", Integer.valueOf(nextTurnCount),
+                ConversationStateKeys.TURN_COUNT, Integer.valueOf(nextTurnCount),
                 // ProductManager 节点本身无权结束流程，所以这里明确保持未完成状态。
-                "done", Boolean.FALSE,
+                ConversationStateKeys.DONE, Boolean.FALSE,
                 // 停止原因沿用旧值，避免在非结束节点里误覆盖真正的终止信息。
-                "stop_reason", state.value("stop_reason", ""),
+                ConversationStateKeys.STOP_REASON, state.value(ConversationStateKeys.STOP_REASON, ""),
                 // 把更新后的共享消息重新编码为可放入状态的结构。
-                "shared_messages", ConversationStateSupport.toStateMessages(sharedMessages),
+                ConversationStateKeys.SHARED_MESSAGES, ConversationStateSupport.toStateMessages(sharedMessages),
                 // 把更新后的 transcript 重新编码为可放入状态的结构。
-                "transcript", ConversationStateSupport.toStateTranscript(transcript)));
+                ConversationStateKeys.TRANSCRIPT, ConversationStateSupport.toStateTranscript(transcript)));
     }
 
     /**

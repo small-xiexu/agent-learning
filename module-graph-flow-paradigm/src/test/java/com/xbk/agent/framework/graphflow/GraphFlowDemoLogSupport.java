@@ -3,6 +3,7 @@ package com.xbk.agent.framework.graphflow;
 import com.alibaba.cloud.ai.graph.OverAllState;
 import com.xbk.agent.framework.graphflow.common.state.GraphState;
 import com.xbk.agent.framework.graphflow.framework.AlibabaGraphFlowAgent;
+import com.xbk.agent.framework.graphflow.framework.support.GraphFlowStateKeys;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -62,14 +63,14 @@ final class GraphFlowDemoLogSupport {
         logger.info(title);
         logger.info("SUMMARY");
         logger.info("  userQuery     -> " + defaultText(result.getUserQuery()));
-        logger.info("  searchQuery   -> " + state.value("search_query", String.class).orElse(""));
+        logger.info("  searchQuery   -> " + state.value(GraphFlowStateKeys.SEARCH_QUERY, String.class).orElse(""));
         logger.info("  usedFallback  -> " + result.isUsedFallback());
         logger.info("  stateKeys     -> " + new ArrayList<String>(state.data().keySet()));
         logger.info("SEARCH_RESULTS");
         logMultilineSection(logger, result.getSearchResults());
         if (result.isUsedFallback()) {
             logger.info("ERROR_MESSAGE");
-            logMultilineSection(logger, state.value("error_message", String.class).orElse(""));
+            logMultilineSection(logger, state.value(GraphFlowStateKeys.ERROR_MESSAGE, String.class).orElse(""));
         }
         logger.info("FINAL_ANSWER");
         logMultilineSection(logger, result.getFinalAnswer());

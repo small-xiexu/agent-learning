@@ -12,6 +12,7 @@ import com.alibaba.cloud.ai.graph.exception.GraphRunnerException;
 import com.alibaba.cloud.ai.graph.exception.GraphStateException;
 import com.xbk.agent.framework.reflection.infrastructure.agentframework.node.JavaCoderNode;
 import com.xbk.agent.framework.reflection.infrastructure.agentframework.node.JavaReviewerNode;
+import com.xbk.agent.framework.reflection.infrastructure.agentframework.support.ReflectionStateKeys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -42,14 +43,6 @@ public class AlibabaReflectionFlowAgent extends FlowAgent {
     // 图中的两个业务节点名称，用于在 StateGraph 中注册节点和连接执行路径。
     private static final String CODER_NODE = "java_coder_node";
     private static final String REVIEWER_NODE = "java_reviewer_node";
-
-    // 这三个状态键是图执行过程中的共享上下文：
-    // current_code 保存 coder 最近一次产出的完整代码；
-    // review_feedback 保存 reviewer 最近一次给出的评审意见；
-    // iteration_count 记录已完成的评审轮次，供终止条件判断。
-    private static final String CURRENT_CODE_KEY = "current_code";
-    private static final String REVIEW_FEEDBACK_KEY = "review_feedback";
-    private static final String ITERATION_COUNT_KEY = "iteration_count";
 
     // coder 负责产出初稿并根据 reviewer 意见持续迭代代码。
     private final ReactAgent javaCoderAgent;
@@ -110,10 +103,10 @@ public class AlibabaReflectionFlowAgent extends FlowAgent {
     public RunResult run(String task) {
         // 初始化图执行的全局状态：任务作为输入，代码与评审结果先置空，迭代次数从 0 开始。
         Map<String, Object> input = Map.of(
-                "input", task,
-                CURRENT_CODE_KEY, "",
-                REVIEW_FEEDBACK_KEY, "",
-                ITERATION_COUNT_KEY, Integer.valueOf(0));
+                ReflectionStateKeys.INPUT, task,
+                ReflectionStateKeys.CURRENT_CODE, "",
+                ReflectionStateKeys.REVIEW_FEEDBACK, "",
+                ReflectionStateKeys.ITERATION_COUNT, Integer.valueOf(0));
         try {
             /**
              * invoke 会驱动整张图执行，并把各节点写回的状态聚合成最终的 OverAllState。
@@ -126,9 +119,9 @@ public class AlibabaReflectionFlowAgent extends FlowAgent {
             OverAllState state = optionalState.orElseThrow(
                     () -> new IllegalStateException("Reflection FlowAgent did not return state"));
             // 调用方最终只关心结果对象，因此这里把图内部共享状态还原成领域语义更明确的 RunResult。
-            String finalCode = extractStateText(state, CURRENT_CODE_KEY);
-            String finalReview = extractStateText(state, REVIEW_FEEDBACK_KEY);
-            int iterationCount = state.value(ITERATION_COUNT_KEY, Integer.class).orElse(Integer.valueOf(0));
+            String finalCode = extractStateText(state, ReflectionStateKeys.CURRENT_CODE);
+            String finalReview = extractStateText(state, ReflectionStateKeys.REVIEW_FEEDBACK);
+            int iterationCount = state.value(ReflectionStateKeys.ITERATION_COUNT, Integer.class).orElse(Integer.valueOf(0));
             return new RunResult(task, finalCode, finalReview, iterationCount, state);
         } catch (GraphRunnerException exception) {
             throw new IllegalStateException("Reflection FlowAgent execution failed", exception);
@@ -194,8 +187,8 @@ public class AlibabaReflectionFlowAgent extends FlowAgent {
      */
     private AsyncEdgeAction continueOrStop() {
         return state -> {
-            String reviewFeedback = extractStateText(state, REVIEW_FEEDBACK_KEY);
-            int iterationCount = state.value(ITERATION_COUNT_KEY, Integer.class).orElse(Integer.valueOf(0));
+            String reviewFeedback = extractStateText(state, ReflectionStateKeys.REVIEW_FEEDBACK);
+            int iterationCount = state.value(ReflectionStateKeys.ITERATION_COUNT, Integer.class).orElse(Integer.valueOf(0));
 
             // 结束条件有两个：
             // 1. reviewer 明确判断“无需改进”，说明本轮代码已收敛；
@@ -282,7 +275,7 @@ public class AlibabaReflectionFlowAgent extends FlowAgent {
                         评审意见：
                         {review_feedback}
                         """)
-                .outputKey(CURRENT_CODE_KEY)
+                .outputKey(ReflectionStateKeys.CURRENT_CODE)
                 .includeContents(false)
                 .returnReasoningContents(false)
                 .build();
@@ -318,7 +311,7 @@ public class AlibabaReflectionFlowAgent extends FlowAgent {
                         如果仍然存在明确、可落地的复杂度优化空间，请不要输出“无需改进”，而是明确指出瓶颈和下一轮如何修改。
                         只有当当前实现已经没有明显的时间复杂度优化空间时，才明确输出“无需改进”。
                         """)
-                .outputKey(REVIEW_FEEDBACK_KEY)
+                .outputKey(ReflectionStateKeys.REVIEW_FEEDBACK)
                 .includeContents(false)
                 .returnReasoningContents(false)
                 .build();

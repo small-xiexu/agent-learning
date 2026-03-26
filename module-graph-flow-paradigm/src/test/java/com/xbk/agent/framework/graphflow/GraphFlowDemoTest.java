@@ -13,6 +13,7 @@ import com.xbk.agent.framework.graphflow.common.state.GraphState;
 import com.xbk.agent.framework.graphflow.common.state.StepStatus;
 import com.xbk.agent.framework.graphflow.common.tool.MockSearchTool;
 import com.xbk.agent.framework.graphflow.framework.AlibabaGraphFlowAgent;
+import com.xbk.agent.framework.graphflow.framework.support.GraphFlowStateKeys;
 import com.xbk.agent.framework.graphflow.handwritten.HandwrittenGraphFlow;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -103,8 +104,8 @@ class GraphFlowDemoTest {
         assertNotNull(result.getFinalAnswer());
         assertTrue(result.getFinalAnswer().contains("搜索结果摘要"),
                 "正常路径下 finalAnswer 应包含搜索结果摘要，实际：" + result.getFinalAnswer());
-        assertNotNull(result.getState().value("search_query").orElse(null), "search_query 不应为空");
-        assertTrue(result.getState().value("final_answer").isPresent(), "final_answer 应存在于图状态");
+        assertNotNull(result.getState().value(GraphFlowStateKeys.SEARCH_QUERY).orElse(null), "search_query 不应为空");
+        assertTrue(result.getState().value(GraphFlowStateKeys.FINAL_ANSWER).isPresent(), "final_answer 应存在于图状态");
     }
 
     /**
@@ -122,7 +123,7 @@ class GraphFlowDemoTest {
         assertNotNull(result.getFinalAnswer());
         assertTrue(result.getFinalAnswer().contains("降级回答"),
                 "降级路径下 finalAnswer 应包含\"降级回答\"标记，实际：" + result.getFinalAnswer());
-        assertTrue(result.getState().value("search_failed").isPresent(), "search_failed 应存在于图状态");
+        assertTrue(result.getState().value(GraphFlowStateKeys.SEARCH_FAILED).isPresent(), "search_failed 应存在于图状态");
     }
 
     // ══════════════════════════════════════════════════════════════════════════

@@ -4,6 +4,7 @@ import com.alibaba.cloud.ai.graph.OverAllState;
 import com.xbk.agent.framework.planreplan.config.OpenAiPlanSolveDemoPropertySupport;
 import com.xbk.agent.framework.planreplan.config.OpenAiPlanSolveDemoTestConfig;
 import com.xbk.agent.framework.planreplan.infrastructure.agentframework.AlibabaSequentialPlanAndSolveAgent;
+import com.xbk.agent.framework.planreplan.infrastructure.agentframework.support.PlanReplanStateKeys;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -48,9 +49,9 @@ class AlibabaSequentialPlanAndSolveOpenAiDemo {
                 最终答案：**70个苹果**。
                 """;
         OverAllState state = new OverAllState(Map.of(
-                "input", APPLE_QUESTION,
-                "plan_result", new AssistantMessage(planResult),
-                "final_answer", new AssistantMessage(finalAnswer)));
+                PlanReplanStateKeys.INPUT, APPLE_QUESTION,
+                PlanReplanStateKeys.PLAN_RESULT, new AssistantMessage(planResult),
+                PlanReplanStateKeys.FINAL_ANSWER, new AssistantMessage(finalAnswer)));
         AlibabaSequentialPlanAndSolveAgent.RunResult result =
                 new AlibabaSequentialPlanAndSolveAgent.RunResult(APPLE_QUESTION, planResult, finalAnswer, state);
 
@@ -136,8 +137,8 @@ class AlibabaSequentialPlanAndSolveOpenAiDemo {
      * @return 状态类型摘要
      */
     private String buildStateMeta(OverAllState state) {
-        String planResultType = state.value("plan_result").map(this::describeType).orElse("null");
-        String finalAnswerType = state.value("final_answer").map(this::describeType).orElse("null");
+        String planResultType = state.value(PlanReplanStateKeys.PLAN_RESULT).map(this::describeType).orElse("null");
+        String finalAnswerType = state.value(PlanReplanStateKeys.FINAL_ANSWER).map(this::describeType).orElse("null");
         return "STATE_META -> plan_result=" + planResultType + ", final_answer=" + finalAnswerType;
     }
 

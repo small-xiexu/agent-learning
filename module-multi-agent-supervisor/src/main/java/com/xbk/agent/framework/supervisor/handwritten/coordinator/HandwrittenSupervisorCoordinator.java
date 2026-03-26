@@ -48,6 +48,8 @@ public final class HandwrittenSupervisorCoordinator {
      * @param maxRounds 最大路由轮次
      */
     public HandwrittenSupervisorCoordinator(AgentLlmGateway agentLlmGateway, int maxRounds) {
+        // 这个重载构造器提供“开箱即用”的教学入口：
+        // 调用方只传统一网关和最大轮次，就能得到一套完整的 Writer / Translator / Reviewer 编排。
         this(
                 agentLlmGateway,
                 new WriterAgent(agentLlmGateway),
@@ -76,6 +78,7 @@ public final class HandwrittenSupervisorCoordinator {
                                             SupervisorScratchpad scratchpad,
                                             SupervisorDecisionJsonParser decisionJsonParser,
                                             CompletionPolicy completionPolicy) {
+        // 这个重载则把所有依赖显式摊开，方便测试替身注入和教学场景下逐个替换组件观察行为。
         this.agentLlmGateway = agentLlmGateway;
         this.writerAgent = writerAgent;
         this.translatorAgent = translatorAgent;
@@ -239,6 +242,8 @@ public final class HandwrittenSupervisorCoordinator {
      * @return 统一消息
      */
     private Message buildMessage(String conversationId, MessageRole role, String content) {
+        // 即使这里只是组装 Prompt，也统一走项目自己的 Message 模型，
+        // 这样 Supervisor 手写版和其他范式在网关层看到的输入协议保持一致。
         return Message.builder()
                 .messageId("message-" + UUID.randomUUID())
                 .conversationId(conversationId)

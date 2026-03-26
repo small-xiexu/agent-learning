@@ -17,6 +17,8 @@ import com.xbk.agent.framework.graphflow.framework.node.SearchNodeAction;
 import com.xbk.agent.framework.graphflow.framework.node.UnderstandNodeAction;
 import lombok.extern.slf4j.Slf4j;
 
+import com.xbk.agent.framework.graphflow.framework.support.GraphFlowStateKeys;
+
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
@@ -92,12 +94,12 @@ public class AlibabaGraphFlowAgent extends FlowAgent {
         // 等价于手写版：GraphState initialState = GraphState.init(userQuery)
         // 框架版用 Map 替代强类型 POJO，这是框架版与手写版最直观的差异
         Map<String, Object> input = Map.of(
-                "user_query",    userQuery,
-                "search_query",  "",
-                "search_results","",
-                "final_answer",  "",
-                "search_failed", Boolean.FALSE,
-                "error_message", "");
+                GraphFlowStateKeys.USER_QUERY,    userQuery,
+                GraphFlowStateKeys.SEARCH_QUERY,  "",
+                GraphFlowStateKeys.SEARCH_RESULTS,"",
+                GraphFlowStateKeys.FINAL_ANSWER,  "",
+                GraphFlowStateKeys.SEARCH_FAILED, Boolean.FALSE,
+                GraphFlowStateKeys.ERROR_MESSAGE, "");
         try {
             // invoke(input) 启动框架内部的图执行循环 ——
             // 等价于手写版：graphRunner.run(initialState)，即 while 循环开始
@@ -105,9 +107,9 @@ public class AlibabaGraphFlowAgent extends FlowAgent {
             OverAllState finalState = optionalState.orElseThrow(
                     () -> new IllegalStateException("AlibabaGraphFlowAgent 未返回状态"));
 
-            String finalAnswer   = finalState.value("final_answer", String.class).orElse("");
-            String searchResults = finalState.value("search_results", String.class).orElse("");
-            boolean usedFallback = finalState.value("search_failed", Boolean.class).orElse(Boolean.FALSE);
+            String finalAnswer   = finalState.value(GraphFlowStateKeys.FINAL_ANSWER, String.class).orElse("");
+            String searchResults = finalState.value(GraphFlowStateKeys.SEARCH_RESULTS, String.class).orElse("");
+            boolean usedFallback = finalState.value(GraphFlowStateKeys.SEARCH_FAILED, Boolean.class).orElse(Boolean.FALSE);
 
             return new RunResult(userQuery, finalAnswer, searchResults, usedFallback, finalState);
         } catch (GraphRunnerException e) {
@@ -163,8 +165,14 @@ public class AlibabaGraphFlowAgent extends FlowAgent {
         //   case SEARCH_SUCCESS → answerNode.process(state)
         //   case SEARCH_FAILED  → fallbackNode.process(state)
         //
-        // SearchResultEdgeRouter.apply(state) 返回 "answer" 或 "fallback"，
-        // 框架用 Map.of(...) 把标签映射到具体的目标节点名，实现路由表与判断逻辑的解耦
+        // 这里先由 SearchResultEdgeRouter.apply(state) 做判断：
+        // - 搜索成功时返回 "answer"
+        // - 搜索失败时返回 "fallback"
+        //
+        // Map.of(...) 不是业务数据，而是一张“分支标签 -> 目标节点名”的路由表。
+        // 框架拿到路由器返回的标签后，会在这张表里查出下一跳：
+        // - "answer"   -> ANSWER_NODE
+        // - "fallback" -> FALLBACK_NODE
         stateGraph.addConditionalEdges(
                 SEARCH_NODE,
                 new SearchResultEdgeRouter(),
