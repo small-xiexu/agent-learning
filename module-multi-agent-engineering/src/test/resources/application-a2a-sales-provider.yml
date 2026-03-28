@@ -1,0 +1,13 @@
+## 销售顾问 Provider 应用配置
+## 激活 profile: a2a-sales-provider
+
+spring:
+  application:
+    name: sales-agent
+  cloud:
+    nacos:
+      discovery:
+        service: sales-agent           # Nacos 注册服务名
+
+server:
+  port: 8082

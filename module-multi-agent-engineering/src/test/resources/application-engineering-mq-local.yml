@@ -1,0 +1,8 @@
+engineering:
+  mq:
+    enabled: true
+    name-server: 127.0.0.1:9876
+    topic:
+      audit: engineering.audit
+      escalation: engineering.escalation
+      callback: engineering.callback
