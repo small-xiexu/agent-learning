@@ -1,0 +1,17 @@
+## RocketMQ 本地集成配置（真实 MQ 连接）
+## 激活 profile: engineering-mq-rocketmq
+## 前置条件：本地 RocketMQ Broker 已启动（默认端口 9876）
+
+rocketmq:
+  name-server: 127.0.0.1:9876
+  producer:
+    group: engineering-producer-group
+
+engineering:
+  mq:
+    enabled: true
+    name-server: 127.0.0.1:9876
+    topic:
+      audit: engineering.audit
+      escalation: engineering.escalation
+      callback: engineering.callback

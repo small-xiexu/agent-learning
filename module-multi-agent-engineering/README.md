@@ -2,132 +2,170 @@
 
 ## 模块定位
 
-`module-multi-agent-engineering` 用于承载 AgentScope 风格的消息驱动与工程化协作范式。  
-它关注的重点不是“哪个 Agent 更聪明”，而是“在高并发、强治理、长链路场景中，信息如何被干净、稳定、可控地流转”。
+`module-multi-agent-engineering` 是仓库中最偏向**企业工程化**的多智能体实践模块。
 
-这是一个明显偏生产工程的模块。  
-它服务的是可扩展性、可隔离性、可调试性，而不是单纯追求“多 Agent 看起来很智能”。
+它不关注"哪个 Agent 更聪明"，而是聚焦于：在高并发、强治理、长链路场景下，**多个 Agent 如何可控地协作**。
 
-## 🎯 最佳实践场景
+本模块以一个真实场景落地：智能客服路由——用户问题被自动识别意图（技术/销售），并路由给对应的专家 Agent 处理。
 
-**高并发隔离的三国狼人杀**：面向生产级要求，通过严格的上下文工程（Context Engineering）控制“谁能听到什么”，保证狼人的密谋消息对平民绝对隔离。
+---
 
-## 理论背景
+## 双实现总览
 
-消息驱动范式的核心假设是：  
-复杂多 Agent 系统要想可治理，必须把交互抽象为显式消息路由，而不是隐式上下文拼接。
+本模块提供两套完整实现，覆盖从消息驱动到 A2A 协议的完整知识路径：
 
-它解决的是三类生产痛点：
+### 手写消息驱动版（`handwritten/`）
 
-- 上下文越来越大，噪音越来越多
-- Agent 间传递的数据边界不清晰
-- 高并发下不同会话、不同阶段的状态容易互相污染
+- 手动实现 `MessageHub`，管理消息的发布、订阅与异步分发
+- `InMemoryMessageHub`：线程池异步投递，基础版本
+- `MqBackedMessageHub`：RocketMQ 驱动，扩展到跨进程投递
+- `HandwrittenEngineeringCoordinator`：同步入口，内部通过消息链异步驱动
+- 所有 Agent 通过 `MessageHub.subscribe/publish` 通信，没有直接调用链
 
-因此，这个范式强调：
+适合理解：**消息驱动范式的本质、异步回包机制、DeliveryAuditLog 轨迹记录**。
 
-- 精准传递什么数据
-- 严格隔离什么数据
-- 明确哪些推理内容可以被后续节点看到
+### Spring AI Alibaba A2A 框架版（`framework/`）
 
-## 运行机制
+- 使用 A2A（Agent-to-Agent）协议进行跨进程通信
+- Provider 侧：每个专家 Agent 独立成进程，暴露 `/.well-known/agent.json` + JSON-RPC endpoint
+- Consumer 侧：Receptionist 通过 Nacos 发现专家 Agent，同步调用 A2A HTTP 接口
+- MQ 仅作为**增强层**（审计/升级/回调），不替代 A2A 主通信链路
 
-该模块建议以“上下文工程 + 状态隔离 + 显式占位符”作为核心运行机制。
+适合理解：**A2A 协议注册发现、生产级多进程部署、MQ 作为异步补偿的正确角色**。
 
-### 1. 状态写入
+---
 
-每个 Agent 的输出都进入统一状态容器，并通过清晰的键名保存。
+## 核心共享组件
 
-### 2. 占位符读取
+两套实现共用以下组件，保证业务语义一致：
 
-后续 Agent 不直接读取全部消息历史，而是通过显式占位符读取自己所需的数据，例如：
+| 组件 | 路径 | 职责 |
+|---|---|---|
+| `EngineeringRunResult` | `api/` | 统一结果模型，手写版与框架版都返回此结构 |
+| `CustomerIntentClassifier` | `application/routing/` | 意图分类，两版共用，调用 `AgentLlmGateway` |
+| `RoutingDecision` | `domain/routing/` | 路由决策模型，含意图类型、专家类型、目标 topic/agent |
+| `EngineeringPromptTemplates` | `support/` | 三类角色提示词模板（接待员/技术/销售） |
+| `AgentLlmGateway` | `framework-core` | 所有模型调用的唯一出口，不允许绕过 |
 
-- `{input}`
-- `{outputKey}`
-- `{stateKey}`
+---
 
-### 3. 内容隔离
+## 推荐阅读顺序
 
-并非所有中间消息都应传给后续 Agent。  
-系统应允许只暴露结果，不暴露推理过程；只暴露局部状态，不暴露全量上下文。
+### 阶段一：理解消息驱动基础
 
-### 4. 消息路由
+1. `domain/message/MessageTopic.java` — 消息主题枚举，先理解有哪些消息类型
+2. `handwritten/hub/MessageHub.java` — 最小接口：subscribe/publish/close
+3. `handwritten/hub/InMemoryMessageHub.java` — 内存实现，看线程池异步分发
+4. `handwritten/hub/AsyncMessageDispatcher.java` — 分发机制细节
+5. `handwritten/runtime/DeliveryAuditLog.java` — 审计记录，理解消息可观测性
 
-当系统规模扩大后，Agent 之间的协作更像一张消息网络，而不是一条简单链路。  
-因此消息路由与状态命名要从一开始就标准化。
+### 阶段二：理解 Agent 协作机制
 
-## Spring AI Alibaba 映射
+6. `handwritten/agent/AbstractHandwrittenAgent.java` — Agent 基类，receive/send 协议
+7. `handwritten/agent/HandwrittenReceptionistAgent.java` — 接待员：意图识别 + 路由 + 等待回包
+8. `handwritten/agent/HandwrittenTechSupportAgent.java` — 技术专家：消费主题并回包
+9. `handwritten/coordinator/HandwrittenEngineeringCoordinator.java` — 同步入口，异步驱动
 
-这个模块与 Spring AI Alibaba 官方强调的 **Context Engineering（上下文工程）** 高度一致。
+### 阶段三：理解 A2A 框架版
 
-官方多 Agent 文档明确给出了几组关键参数：
+10. `framework/config/A2aNacosCommonConfig.java` — A2A 公共配置，Nacos 连接与 Agent 命名
+11. `framework/support/EngineeringAgentCardSupport.java` — AgentCard 构建，专家名/描述/技能
+12. `framework/config/TechSupportA2aServerConfig.java` — Provider 侧装配，暴露 A2A endpoint
+13. `framework/client/SpecialistRemoteAgentLocator.java` — 从 Nacos 发现 Agent URL
+14. `framework/client/TechSupportRemoteAgentFacade.java` — A2A 调用封装
+15. `framework/agent/FrameworkReceptionistService.java` — 框架版接待员：分类 + 调用 Facade
 
-- `instruction`：支持占位符读取状态
-- `outputKey`：定义输出键名，供后续 Agent 使用 `{key}` 引用
-- `returnReasoningContent(s)`：控制中间推理是否回传到父流程
-- `includeContents`：控制当前 Agent 是否携带父流程的上下文内容
+### 阶段四：理解 MQ 增强层
 
-这些能力共同构成了工程化多 Agent 的控制面。
+16. `framework/messaging/RoutingAuditEventPublisher.java` — 路由审计事件
+17. `framework/messaging/SpecialistEscalationPublisher.java` — 专家升级任务投递
+18. `framework/messaging/AsyncResultCallbackListener.java` — 异步回调监听基类
+19. `framework/config/EngineeringMqEnhancementConfig.java` — MQ 开关配置（enabled=false 即 no-op）
 
-### 本模块的关键技术映射
+### 阶段五：理解 MqBackedMessageHub
 
-- 用 `outputKey` 建立稳定的数据接力协议
-- 用 `{input}`、`{outputKey}`、`{stateKey}` 等占位符实现显式数据引用
-- 用 `includeContents=false` 减少上下文噪音
-- 用 `returnReasoningContents=false` 隔离中间思维，降低 Token 成本与信息泄漏风险
+20. `handwritten/mq/RocketMqTopicBindingSupport.java` — 逻辑主题 → RocketMQ 目的地映射
+21. `handwritten/mq/RocketMqMessageProducer.java` — 消息序列化 + convertAndSend
+22. `handwritten/hub/MqBackedMessageHub.java` — MQ 版本，语义与 InMemoryMessageHub 同构
 
-从工程上看，这个模块本质上是在 Spring AI Alibaba 现有多 Agent 机制之上，把“上下文传递策略”提升为一等设计对象。
+---
+
+## Demo 入口
+
+### 手写版本地运行
+
+```
+# 直接运行测试（不依赖外部服务）
+mvn -pl module-multi-agent-engineering test -Dtest=HandwrittenEngineeringRoutingTest
+
+# 开启 OpenAI 真实模型 Demo（需配置 API Key）
+mvn -pl module-multi-agent-engineering test \
+  -Dtest=HandwrittenEngineeringOpenAiDemo \
+  -Dopenai.engineering.demo=true
+```
+
+### 框架版 A2A 本地集成运行
+
+需要先启动本地 Nacos（默认 8848 端口）：
+
+```
+# 1. 启动技术专家 Provider（8081 端口）
+# profile: a2a-tech-provider,a2a-nacos-local
+
+# 2. 启动销售顾问 Provider（8082 端口）
+# profile: a2a-sales-provider,a2a-nacos-local
+
+# 3. 启动 Receptionist Consumer（8080 端口）
+# profile: a2a-receptionist-consumer,a2a-nacos-local
+
+# 4. 运行完整 A2A 集成测试
+mvn -pl module-multi-agent-engineering test \
+  -Dtest=FrameworkA2aRoutingTest \
+  -Da2a.integration=true
+```
+
+### 对照测试（无外部依赖）
+
+```
+# 验证两套实现路由语义一致
+mvn -pl module-multi-agent-engineering test -Dtest=EngineeringComparisonTest
+```
+
+---
+
+## 三进程本地部署说明
+
+框架版设计为**三个独立 Spring Boot 应用**：
+
+| 应用 | Profile | 端口 | 职责 |
+|---|---|---|---|
+| `TechSupportProviderApplication` | `a2a-tech-provider` | 8081 | 技术专家 Agent，暴露 A2A endpoint |
+| `SalesProviderApplication` | `a2a-sales-provider` | 8082 | 销售顾问 Agent，暴露 A2A endpoint |
+| `ReceptionistConsumerApplication` | `a2a-receptionist-consumer` | 8080 | 接待员，Nacos 发现 + A2A 调用 |
+
+前置条件：
+- Nacos Server 已启动（`127.0.0.1:8848`）
+- Provider 应用已向 Nacos 注册（serviceName 分别为 `tech-support-agent`、`sales-agent`）
+- 应用 properties 中已填写真实 LLM API Key
+
+---
+
+## MQ 增强层说明
+
+MQ（RocketMQ）在本模块中**只承担增强层职责**，不替代 A2A 主通信链路：
+
+- `engineering.mq.enabled=false`（默认）：MQ 增强层完全 no-op，A2A 链路不受影响
+- `engineering.mq.enabled=true`：启用三条 MQ 主题：
+  - `engineering.audit`：每次路由决策的审计事件
+  - `engineering.escalation`：A2A 超时后的专家升级任务
+  - `engineering.callback`：长耗时专家处理完成后的异步回调
+
+本地 RocketMQ 测试 profile：`engineering-mq-rocketmq`（需本地 Broker 已启动，端口 9876）。
+
+---
 
 ## 与 framework-core 的关系
 
-本模块尤其依赖 `framework-core.memory` 与 `framework-core.message` 的统一协议，因为它处理的核心问题本质上是“消息如何被路由与隔离”。
-
-- `Message`：提供统一消息语义
-- `Memory / MemorySession`：提供会话和阶段级上下文读取能力
-- `AgentLlmGateway`：负责统一模型调用
-
-建议在这个模块中进一步抽象：
-
-- `ContextSlice`
-- `IsolationPolicy`
-- `PlaceholderBinding`
-
-使上下文工程不只是 Prompt 技巧，而是可测试的工程组件。
-
-## 工程落地建议
-
-### 1. 先设计状态命名规范
-
-没有统一 `outputKey` 命名规则的系统，很快会变成“谁也不知道 `{result}` 到底是什么”。
-
-### 2. 默认最小暴露
-
-上下文不是越多越好。  
-在生产场景里，应优先让 Agent 只看到它完成当前任务真正需要的数据。
-
-### 3. 推理内容默认隔离
-
-不是每个 Agent 的中间思考都值得传播。  
-默认关闭推理回传，按需开放，通常更稳。
-
-### 4. 把上下文工程当作治理能力
-
-上下文工程不是“写个 Prompt 模板”，而是生产系统的流量控制与信息隔离手段。
-
-## 适用场景与边界
-
-### 适用场景
-
-- 高并发多 Agent 系统
-- 长链路消息处理
-- 需要严格状态隔离和上下文治理的企业场景
-
-### 不适合的场景
-
-- 低复杂度的简单串行流程
-- 不需要上下文裁剪的小型 Demo
-
-## 结论
-
-消息驱动与工程化范式的本质，是把多 Agent 系统从“聪明的对话程序”升级为“可治理的信息路由系统”。
-
-在本项目中，`module-multi-agent-engineering` 应承担生产级治理能力落地点的角色，为高并发、多会话、强隔离场景提供稳定底座。
+- `AgentLlmGateway`：所有模型调用的唯一出口，两套实现都不绕过
+- `Message` / `Memory`：提供统一消息语义
+- `EngineeringGatewayBackedChatModel`：把 Spring AI `ChatModel` 调用适配到 `AgentLlmGateway`

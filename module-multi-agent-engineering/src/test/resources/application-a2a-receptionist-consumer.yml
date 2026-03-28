@@ -1,0 +1,13 @@
+## 接待员 Consumer 应用配置
+## 激活 profile: a2a-receptionist-consumer
+
+spring:
+  application:
+    name: receptionist-agent
+  cloud:
+    nacos:
+      discovery:
+        service: receptionist-agent   # Consumer 也向 Nacos 注册自身
+
+server:
+  port: 8080

@@ -1,0 +1,26 @@
+## A2A 本地 Nacos 公共配置
+## 供 a2a-tech-provider / a2a-sales-provider / a2a-receptionist-consumer 三个 profile 共用
+
+spring:
+  cloud:
+    nacos:
+      discovery:
+        # 本地 Nacos 地址，请先启动 Nacos Server：
+        #   docker run -d --name nacos -p 8848:8848 -e MODE=standalone nacos/nacos-server:v2.3.2
+        server-addr: 127.0.0.1:8848
+        namespace: engineering-a2a
+        # namespace 需要在 Nacos 控制台手动创建，或使用 public 命名空间（留空即为 public）
+
+engineering:
+  a2a:
+    nacos:
+      server-addr: 127.0.0.1:8848
+      namespace: engineering-a2a
+    timeout: 30000
+    agent:
+      tech:
+        name: tech-support-agent
+      sales:
+        name: sales-agent
+      receptionist:
+        name: receptionist-agent
