@@ -63,6 +63,11 @@ public class SpecialistEscalationPublisher {
         if (!mqConfig.isEnabled()) {
             return;
         }
+        if (rocketMQTemplate == null) {
+            log.warn("[MQ-ESCALATION] MQ enabled but RocketMQTemplate unavailable, skip conversation={}",
+                    conversationId);
+            return;
+        }
         Map<String, Object> event = new LinkedHashMap<String, Object>();
         event.put("conversationId", conversationId);
         event.put("userRequest", truncate(userRequest, 200));

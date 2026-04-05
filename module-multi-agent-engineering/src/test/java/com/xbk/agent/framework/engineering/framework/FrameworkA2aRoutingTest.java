@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * @author xiexu
  */
 @SpringBootTest(classes = com.xbk.agent.framework.engineering.framework.app.ReceptionistConsumerApplication.class)
-@ActiveProfiles({"a2a-receptionist-consumer", "a2a-nacos-local"})
+@ActiveProfiles({"a2a-receptionist-consumer", "a2a-nacos-local", "llm-local"})
 @EnabledIfSystemProperty(named = "a2a.integration", matches = "true")
 class FrameworkA2aRoutingTest {
 

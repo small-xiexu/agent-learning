@@ -1,10 +1,17 @@
 package com.xbk.agent.framework.reflection.config;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.env.YamlPropertySourceLoader;
+import org.springframework.core.env.PropertySource;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 import org.springframework.mock.env.MockEnvironment;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -57,12 +64,11 @@ class OpenAiReflectionDemoPropertySupportTest {
     @Test
     void shouldLoadApiKeyFromDemoConfigFiles() throws Exception {
         String mainConfig = "openai-reflection-demo-fixture/application-openai-reflection-demo.yml";
-        String localConfig = "openai-reflection-demo-fixture/application-openai-reflection-demo-local.yml";
 
         assertEquals("fixture-reflection-key",
-                OpenAiReflectionDemoPropertySupport.loadEnvironment(mainConfig, localConfig).getProperty("llm.api-key"));
-        assertTrue(OpenAiReflectionDemoPropertySupport.hasConfiguredApiKey(mainConfig, localConfig));
-        assertTrue(OpenAiReflectionDemoPropertySupport.isDemoEnabled(mainConfig, localConfig));
+                OpenAiReflectionDemoPropertySupport.loadEnvironment(mainConfig, null).getProperty("llm.api-key"));
+        assertTrue(OpenAiReflectionDemoPropertySupport.hasConfiguredApiKey(mainConfig, null));
+        assertTrue(OpenAiReflectionDemoPropertySupport.isDemoEnabled(mainConfig, null));
     }
 
     /**
@@ -88,13 +94,38 @@ class OpenAiReflectionDemoPropertySupportTest {
     }
 
     /**
+     * 验证主配置保持模板态，只显式导入共享 LLM 本地配置和 Demo 本地开关配置。
+     *
+     * @throws Exception 加载资源失败时抛出异常
+     */
+    @Test
+    void shouldKeepMainConfigAsTemplateAndImportSharedLocalFiles() throws Exception {
+        Resource resource = new ClassPathResource("application-openai-reflection-demo.yml");
+        assertNotNull(resource);
+
+        YamlPropertySourceLoader loader = new YamlPropertySourceLoader();
+        List<PropertySource<?>> propertySources = loader.load(resource.getFilename(), resource);
+        MockEnvironment environment = new MockEnvironment();
+        for (int index = propertySources.size() - 1; index >= 0; index--) {
+            environment.getPropertySources().addLast(propertySources.get(index));
+        }
+
+        assertEquals("optional:application-llm-local.yml", environment.getProperty("spring.config.import[0]"));
+        assertEquals("optional:application-openai-reflection-demo-local.yml",
+                environment.getProperty("spring.config.import[1]"));
+        assertEquals("https://api.openai.com", environment.getProperty("llm.base-url"));
+        assertFalse(OpenAiReflectionDemoPropertySupport.hasConfiguredApiKey(environment));
+        assertFalse(OpenAiReflectionDemoPropertySupport.isDemoEnabled(environment));
+    }
+
+    /**
      * 验证 Demo 配置加载不应回退到系统属性。
      *
      * @throws Exception 加载资源失败时抛出异常
      */
     @Test
     void shouldIgnoreSystemPropertyFallbacks() throws Exception {
-        String mainConfig = "openai-reflection-demo-fixture/application-openai-reflection-demo.yml";
+        String mainConfig = "openai-reflection-demo-fixture/missing.yml";
         String originalApiKey = System.getProperty("llm.api-key");
         String originalEnabled = System.getProperty("demo.reflection.openai.enabled");
         System.setProperty("llm.api-key", "system-property-key");

@@ -14,16 +14,80 @@ import java.util.Map;
  */
 public final class EngineeringMessage {
 
+    /** 消息唯一标识。每条消息独立生成，用于审计日志和 trace 中的消息级追踪。 */
     private final String messageId;
+
+    /** 会话标识。同一次用户请求的所有消息共用同一个 conversationId，跨消息关联上下文。 */
     private final String conversationId;
+
+    /**
+     * 请求-回包关联标识。
+     *
+     * 由 Coordinator 生成并写入第一条消息，后续每一跳必须原样透传。
+     * Receptionist 回包时用它在 PendingResponseRegistry 中找到对应的 Future 并唤醒 Coordinator 线程。
+     * 是整条异步链和同步等待点之间的唯一桥梁。
+     */
     private final String correlationId;
+
+    /** 发送方 Agent 名称。用于 trace 还原"谁发了这条消息"，以及专家回包时填写 toAgent 字段。 */
     private final String fromAgent;
+
+    /**
+     * 目标 Agent 名称（可选）。
+     *
+     * 消息驱动模型下路由主要靠 topic，toAgent 是辅助语义，供接收方确认消息是否发给自己。
+     * 广播消息可为 null。
+     */
     private final String toAgent;
+
+    /**
+     * 消息主题。
+     *
+     * MessageHub 的路由键：订阅了该主题的 Agent 才会收到这条消息。
+     * 取值见 MessageTopic 常量（CUSTOMER_REQUEST / SUPPORT_TECH_REQUEST / RECEPTIONIST_REPLY 等）。
+     */
     private final String topic;
+
+    /**
+     * 消息类型。
+     *
+     * 标识消息在业务流程中的阶段：CUSTOMER_REQUEST / SPECIALIST_REQUEST / SPECIALIST_RESPONSE。
+     * Receptionist 用它区分"处理用户请求"还是"处理专家回包"，决定进入哪条分支。
+     */
     private final MessageType messageType;
+
+    /**
+     * 回包主题（可选）。
+     *
+     * 由发送方（Receptionist 转发时）填入，告知接收方（专家 Agent）处理完后把结果发到哪个主题。
+     * 专家不需要硬编码回包地址，直接读取此字段即可，使路由规则对专家透明。
+     */
     private final String replyTo;
+
+    /**
+     * 消息创建时间戳。
+     *
+     * 若构建时未显式设置则自动取当前时间（Instant.now()），用于 DeliveryAuditLog 的时间轴还原。
+     */
     private final Instant timestamp;
+
+    /**
+     * 业务载荷。
+     *
+     * 运行时类型由 messageType 决定：
+     * - CUSTOMER_REQUEST      → CustomerServiceRequest
+     * - SPECIALIST_REQUEST    → SpecialistRequestPayload
+     * - SPECIALIST_RESPONSE   → SpecialistResponsePayload
+     * 接收方需根据 messageType 强转后使用。
+     */
     private final Object payload;
+
+    /**
+     * 扩展消息头（不可变）。
+     *
+     * 用于传递不适合放在固定字段里的扩展元数据（如优先级、来源标签等）。
+     * 默认为空 Map，不参与核心路由逻辑。
+     */
     private final Map<String, Object> headers;
 
     /**

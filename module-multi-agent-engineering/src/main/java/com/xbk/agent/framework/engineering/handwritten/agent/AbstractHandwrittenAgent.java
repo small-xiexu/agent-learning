@@ -14,22 +14,39 @@ import java.util.UUID;
 /**
  * 手写版 Agent 抽象基类。
  *
- * 职责：统一承载 Agent 名称、消息发送能力和通用模型调用逻辑。
+ * <p>所有手写版 Agent（前台、技术专家、销售顾问）都继承这个类。
+ * 它提供三个公共能力，子类直接用，不用自己实现：
+ * <ol>
+ *   <li>记住自己叫什么名字（{@code agentName}），消息里的 fromAgent / toAgent 就填这个；
+ *   <li>通过 {@code send()} 把消息发到 MessageHub，也就是把信投进邮局；
+ *   <li>通过 {@code askModel()} 向 LLM 提问，拿到文字答复。
+ * </ol>
  *
  * @author xiexu
  */
 public abstract class AbstractHandwrittenAgent implements HandwrittenMessageAgent {
 
+    /**
+     * 这个 Agent 的名字，填在每条消息的 fromAgent 字段里，让其他 Agent 知道是谁发的。
+     */
     private final String agentName;
+
+    /**
+     * 统一 LLM 网关，子类通过 askModel() 间接调用，不用自己构造 HTTP 请求。
+     */
     private final AgentLlmGateway agentLlmGateway;
+
+    /**
+     * 邮局引用，子类通过 send() 发消息，通过 getMessageHub() 读取投递日志。
+     */
     private final MessageHub messageHub;
 
     /**
      * 创建手写版 Agent。
      *
-     * @param agentName Agent 名称
+     * @param agentName       Agent 名称
      * @param agentLlmGateway 统一网关
-     * @param messageHub 消息中心
+     * @param messageHub      消息中心
      */
     protected AbstractHandwrittenAgent(String agentName, AgentLlmGateway agentLlmGateway, MessageHub messageHub) {
         this.agentName = agentName;
@@ -76,12 +93,15 @@ public abstract class AbstractHandwrittenAgent implements HandwrittenMessageAgen
     }
 
     /**
-     * 让当前 Agent 使用统一网关发起一次同步问答。
+     * 向 LLM 提一个问题，同步等待文字答复。
      *
-     * @param conversationId 会话标识
-     * @param systemPrompt 系统提示词
-     * @param userPrompt 用户提示词
-     * @return 文本响应
+     * <p>子类（前台、技术专家、销售顾问）都用这个方法调用模型，
+     * 只需传入系统提示词和用户提示词，不用关心 HTTP、token、会话管理这些细节。
+     *
+     * @param conversationId 本次会话 ID，模型用它区分不同对话
+     * @param systemPrompt   系统提示词，告诉模型"你是谁、你的职责是什么"
+     * @param userPrompt     用户提示词，具体的问题内容
+     * @return 模型回复的文字
      */
     protected String askModel(String conversationId, String systemPrompt, String userPrompt) {
         if (agentLlmGateway == null) {
@@ -94,6 +114,10 @@ public abstract class AbstractHandwrittenAgent implements HandwrittenMessageAgen
                         message(conversationId, MessageRole.SYSTEM, systemPrompt),
                         message(conversationId, MessageRole.USER, userPrompt)))
                 .build());
+
+        // 真实 LLM 网关返回的答复在 outputMessage.content 里；
+        // Mock 网关直接返回裸字符串放在 rawText 里。
+        // 先尝试结构化路径，取不到再回退，两种实现都能正常工作。
         if (response.getOutputMessage() != null && response.getOutputMessage().getContent() != null) {
             return response.getOutputMessage().getContent();
         }
@@ -104,8 +128,8 @@ public abstract class AbstractHandwrittenAgent implements HandwrittenMessageAgen
      * 构造统一消息。
      *
      * @param conversationId 会话标识
-     * @param role 消息角色
-     * @param content 消息文本
+     * @param role           消息角色
+     * @param content        消息文本
      * @return 统一消息
      */
     private Message message(String conversationId, MessageRole role, String content) {

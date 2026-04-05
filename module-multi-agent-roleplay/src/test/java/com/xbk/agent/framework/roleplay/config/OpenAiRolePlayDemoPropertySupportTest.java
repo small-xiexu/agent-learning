@@ -1,10 +1,17 @@
 package com.xbk.agent.framework.roleplay.config;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.env.YamlPropertySourceLoader;
+import org.springframework.core.env.PropertySource;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 import org.springframework.mock.env.MockEnvironment;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -57,12 +64,11 @@ class OpenAiRolePlayDemoPropertySupportTest {
     @Test
     void shouldLoadApiKeyFromDemoConfigFiles() throws Exception {
         String mainConfig = "openai-roleplay-demo-fixture/application-openai-roleplay-demo.yml";
-        String localConfig = "openai-roleplay-demo-fixture/application-openai-roleplay-demo-local.yml";
 
         assertEquals("fixture-roleplay-key",
-                OpenAiRolePlayDemoPropertySupport.loadEnvironment(mainConfig, localConfig).getProperty("llm.api-key"));
-        assertTrue(OpenAiRolePlayDemoPropertySupport.hasConfiguredApiKey(mainConfig, localConfig));
-        assertTrue(OpenAiRolePlayDemoPropertySupport.isDemoEnabled(mainConfig, localConfig));
+                OpenAiRolePlayDemoPropertySupport.loadEnvironment(mainConfig, null).getProperty("llm.api-key"));
+        assertTrue(OpenAiRolePlayDemoPropertySupport.hasConfiguredApiKey(mainConfig, null));
+        assertTrue(OpenAiRolePlayDemoPropertySupport.isDemoEnabled(mainConfig, null));
     }
 
     /**
@@ -88,13 +94,38 @@ class OpenAiRolePlayDemoPropertySupportTest {
     }
 
     /**
+     * 验证主配置保持模板态，只显式导入共享 LLM 本地配置和 Demo 本地开关配置。
+     *
+     * @throws Exception 加载资源失败时抛出异常
+     */
+    @Test
+    void shouldKeepMainConfigAsTemplateAndImportSharedLocalFiles() throws Exception {
+        Resource resource = new ClassPathResource("application-openai-roleplay-demo.yml");
+        assertNotNull(resource);
+
+        YamlPropertySourceLoader loader = new YamlPropertySourceLoader();
+        List<PropertySource<?>> propertySources = loader.load(resource.getFilename(), resource);
+        MockEnvironment environment = new MockEnvironment();
+        for (int index = propertySources.size() - 1; index >= 0; index--) {
+            environment.getPropertySources().addLast(propertySources.get(index));
+        }
+
+        assertEquals("optional:application-llm-local.yml", environment.getProperty("spring.config.import[0]"));
+        assertEquals("optional:application-openai-roleplay-demo-local.yml",
+                environment.getProperty("spring.config.import[1]"));
+        assertEquals("https://api.openai.com", environment.getProperty("llm.base-url"));
+        assertFalse(OpenAiRolePlayDemoPropertySupport.hasConfiguredApiKey(environment));
+        assertFalse(OpenAiRolePlayDemoPropertySupport.isDemoEnabled(environment));
+    }
+
+    /**
      * 验证 Demo 配置加载不应回退到系统属性。
      *
      * @throws Exception 加载资源失败时抛出异常
      */
     @Test
     void shouldIgnoreSystemPropertyFallbacks() throws Exception {
-        String mainConfig = "openai-roleplay-demo-fixture/application-openai-roleplay-demo.yml";
+        String mainConfig = "openai-roleplay-demo-fixture/missing.yml";
         String originalApiKey = System.getProperty("llm.api-key");
         String originalEnabled = System.getProperty("demo.roleplay.openai.enabled");
         System.setProperty("llm.api-key", "system-property-key");

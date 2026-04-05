@@ -13,7 +13,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
  * <pre>
  *   mvn spring-boot:run -Dspring-boot.run.profiles=a2a-tech-provider,a2a-nacos-local
  *   # 或指定配置文件
- *   java -jar xxx.jar --spring.profiles.active=a2a-tech-provider,a2a-nacos-local
+ *   java -jar xxx.jar --spring.profiles.active=a2a-tech-provider,a2a-nacos-local,llm-local
  * </pre>
  *
  * <p>启动后：
@@ -32,7 +32,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 public class TechSupportProviderApplication {
 
     public static void main(String[] args) {
-        System.setProperty("spring.profiles.active", "a2a-tech-provider,a2a-nacos-local");
+        System.setProperty("spring.profiles.active", "a2a-tech-provider,a2a-nacos-local,llm-local");
         SpringApplication.run(TechSupportProviderApplication.class, args);
     }
 }

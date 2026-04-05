@@ -1,15 +1,10 @@
 package com.xbk.agent.framework.conversation.config;
 
-import org.springframework.boot.env.YamlPropertySourceLoader;
+import com.xbk.agent.framework.core.config.OpenAiDemoConfigSupport;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.Environment;
-import org.springframework.core.env.PropertySource;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.io.Resource;
-import org.springframework.mock.env.MockEnvironment;
 
 import java.io.IOException;
-import java.util.List;
 
 /**
  * OpenAI Conversation Demo 配置支持类
@@ -20,11 +15,9 @@ import java.util.List;
  */
 public final class OpenAiConversationDemoPropertySupport {
 
-    private static final String API_KEY_PROPERTY = "llm.api-key";
     private static final String DEMO_ENABLED_PROPERTY = "demo.conversation.openai.enabled";
     private static final String DEFAULT_MAIN_CONFIG = "application-openai-conversation-demo.yml";
     private static final String DEFAULT_LOCAL_CONFIG = "application-openai-conversation-demo-local.yml";
-    private static final String EXAMPLE_API_KEY = "your-openai-api-key";
 
     private OpenAiConversationDemoPropertySupport() {
     }
@@ -36,7 +29,7 @@ public final class OpenAiConversationDemoPropertySupport {
      */
     public static boolean hasConfiguredApiKey() {
         try {
-            return hasConfiguredApiKey(loadEnvironment(DEFAULT_MAIN_CONFIG, DEFAULT_LOCAL_CONFIG));
+            return OpenAiDemoConfigSupport.hasConfiguredApiKey(DEFAULT_MAIN_CONFIG, DEFAULT_LOCAL_CONFIG);
         } catch (IOException exception) {
             throw new IllegalStateException("加载 OpenAI Conversation Demo 配置失败", exception);
         }
@@ -49,11 +42,7 @@ public final class OpenAiConversationDemoPropertySupport {
      * @return true 表示已配置
      */
     public static boolean hasConfiguredApiKey(Environment environment) {
-        if (environment == null) {
-            return false;
-        }
-        String apiKey = environment.getProperty(API_KEY_PROPERTY);
-        return hasText(apiKey) && !EXAMPLE_API_KEY.equals(apiKey.trim());
+        return OpenAiDemoConfigSupport.hasConfiguredApiKey(environment);
     }
 
     /**
@@ -65,7 +54,7 @@ public final class OpenAiConversationDemoPropertySupport {
      * @throws IOException 读取配置失败时抛出异常
      */
     public static boolean hasConfiguredApiKey(String mainConfigLocation, String localConfigLocation) throws IOException {
-        return hasConfiguredApiKey(loadEnvironment(mainConfigLocation, localConfigLocation));
+        return OpenAiDemoConfigSupport.hasConfiguredApiKey(mainConfigLocation, localConfigLocation);
     }
 
     /**
@@ -75,7 +64,8 @@ public final class OpenAiConversationDemoPropertySupport {
      */
     public static boolean isDemoEnabled() {
         try {
-            return isDemoEnabled(loadEnvironment(DEFAULT_MAIN_CONFIG, DEFAULT_LOCAL_CONFIG));
+            return OpenAiDemoConfigSupport.isDemoEnabled(DEFAULT_MAIN_CONFIG, DEFAULT_LOCAL_CONFIG,
+                    DEMO_ENABLED_PROPERTY);
         } catch (IOException exception) {
             throw new IllegalStateException("加载 OpenAI Conversation Demo 配置失败", exception);
         }
@@ -88,10 +78,7 @@ public final class OpenAiConversationDemoPropertySupport {
      * @return true 表示启用
      */
     public static boolean isDemoEnabled(Environment environment) {
-        if (environment == null) {
-            return false;
-        }
-        return Boolean.parseBoolean(environment.getProperty(DEMO_ENABLED_PROPERTY));
+        return OpenAiDemoConfigSupport.isDemoEnabled(environment, DEMO_ENABLED_PROPERTY);
     }
 
     /**
@@ -103,7 +90,7 @@ public final class OpenAiConversationDemoPropertySupport {
      * @throws IOException 读取配置失败时抛出异常
      */
     public static boolean isDemoEnabled(String mainConfigLocation, String localConfigLocation) throws IOException {
-        return isDemoEnabled(loadEnvironment(mainConfigLocation, localConfigLocation));
+        return OpenAiDemoConfigSupport.isDemoEnabled(mainConfigLocation, localConfigLocation, DEMO_ENABLED_PROPERTY);
     }
 
     /**
@@ -116,42 +103,6 @@ public final class OpenAiConversationDemoPropertySupport {
      */
     public static ConfigurableEnvironment loadEnvironment(String mainConfigLocation, String localConfigLocation)
             throws IOException {
-        MockEnvironment environment = new MockEnvironment();
-        addYamlIfExists(environment, localConfigLocation);
-        addYamlIfExists(environment, mainConfigLocation);
-        return environment;
-    }
-
-    /**
-     * 向环境中追加 YAML。
-     *
-     * @param environment 目标环境
-     * @param classpathLocation classpath 路径
-     * @throws IOException 读取配置失败时抛出异常
-     */
-    private static void addYamlIfExists(ConfigurableEnvironment environment, String classpathLocation)
-            throws IOException {
-        if (!hasText(classpathLocation)) {
-            return;
-        }
-        Resource resource = new ClassPathResource(classpathLocation);
-        if (!resource.exists()) {
-            return;
-        }
-        YamlPropertySourceLoader loader = new YamlPropertySourceLoader();
-        List<PropertySource<?>> propertySources = loader.load(resource.getFilename(), resource);
-        for (int index = propertySources.size() - 1; index >= 0; index--) {
-            environment.getPropertySources().addLast(propertySources.get(index));
-        }
-    }
-
-    /**
-     * 判断文本是否包含非空白内容。
-     *
-     * @param value 待判断文本
-     * @return true 表示包含内容
-     */
-    private static boolean hasText(String value) {
-        return value != null && !value.trim().isEmpty();
+        return OpenAiDemoConfigSupport.loadEnvironment(mainConfigLocation, localConfigLocation);
     }
 }

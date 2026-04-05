@@ -43,17 +43,17 @@
 
 每个范式模块的 Demo 均以 **JUnit 测试**形式运行，无需启动 Spring Boot 服务。
 
-**第一步：配置本地模型参数**
+**第一步：准备本地 LLM 配置**
 
-每个模块的 `src/test/resources/` 下都有一个 `application-*-local.yml.example` 文件，复制并去掉 `.example` 后缀：
+每个模块的 `src/test/resources/` 下都有一份共享的 `application-llm-local.yml.example`，先复制成真实本地文件：
 
 ```bash
 # 以 ReAct 模块为例
-cp module-react-paradigm/src/test/resources/application-openai-react-demo-local.yml.example \
-   module-react-paradigm/src/test/resources/application-openai-react-demo-local.yml
+cp module-react-paradigm/src/test/resources/application-llm-local.yml.example \
+   module-react-paradigm/src/test/resources/application-llm-local.yml
 ```
 
-然后填入你自己的模型参数：
+然后在 `application-llm-local.yml` 里填入你自己的模型参数：
 
 ```yaml
 llm:
@@ -66,7 +66,17 @@ llm:
 
 > 项目使用 `openai-compatible` 协议，兼容 OpenAI、通义千问、DeepSeek 等主流服务，只需修改 `base-url`、`api-key`、`model` 三个字段即可切换。
 
-**第二步：运行第一个 Demo**
+**第二步：显式开启某个真实 Demo**
+
+每个真实 Demo 还各自有一份 `application-openai-*-demo-local.yml.example`，只负责开启对应的 `demo.*.openai.enabled=true`：
+
+```bash
+# 仍以 ReAct 模块为例
+cp module-react-paradigm/src/test/resources/application-openai-react-demo-local.yml.example \
+   module-react-paradigm/src/test/resources/application-openai-react-demo-local.yml
+```
+
+**第三步：运行第一个 Demo**
 
 建议从 `module-react-paradigm` 开始，直接在 IDE 中运行对应测试类即可。
 

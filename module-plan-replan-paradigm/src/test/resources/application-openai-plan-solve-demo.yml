@@ -1,6 +1,8 @@
 spring:
   config:
-    import: optional:application-openai-plan-solve-demo-local.yml
+    import:
+      - optional:application-llm-local.yml
+      - optional:application-openai-plan-solve-demo-local.yml
 
 llm:
   provider: openai-compatible

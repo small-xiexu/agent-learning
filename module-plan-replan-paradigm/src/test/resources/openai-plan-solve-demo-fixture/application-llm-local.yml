@@ -1,0 +1,6 @@
+llm:
+  provider: openai-compatible
+  base-url: https://fixture.example.com
+  api-key: fixture-plan-solve-key
+  model: gpt-4o
+  chat-completions-path: /v1/chat/completions

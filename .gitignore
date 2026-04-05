@@ -47,12 +47,22 @@ build/
 worktrees/
 
 ### Local OpenAI Demo Config ###
+module-react-paradigm/src/test/resources/application-llm-local.yml
 module-react-paradigm/src/test/resources/application-openai-react-demo-local.yml
+module-plan-replan-paradigm/src/test/resources/application-llm-local.yml
 module-plan-replan-paradigm/src/test/resources/application-openai-plan-solve-demo-local.yml
+module-reflection-paradigm/src/test/resources/application-llm-local.yml
 module-reflection-paradigm/src/test/resources/application-openai-reflection-demo-local.yml
+module-multi-agent-conversation/src/test/resources/application-llm-local.yml
 module-multi-agent-conversation/src/test/resources/application-openai-conversation-demo-local.yml
+module-multi-agent-supervisor/src/test/resources/application-llm-local.yml
 module-multi-agent-supervisor/src/test/resources/application-openai-supervisor-demo-local.yml
+module-graph-flow-paradigm/src/test/resources/application-llm-local.yml
 module-graph-flow-paradigm/src/test/resources/application-openai-graph-demo-local.yml
+module-multi-agent-roleplay/src/test/resources/application-llm-local.yml
+module-multi-agent-roleplay/src/test/resources/application-openai-roleplay-demo-local.yml
+module-multi-agent-engineering/src/test/resources/application-llm-local.yml
+module-multi-agent-engineering/src/main/resources/application-llm-local.yml
 
 ### Local Tool Config ###
 .claude/

@@ -12,23 +12,31 @@ import com.xbk.agent.framework.core.memory.Message;
 import com.xbk.agent.framework.engineering.api.EngineeringRunResult;
 import com.xbk.agent.framework.engineering.application.routing.CustomerIntentClassifier;
 import com.xbk.agent.framework.engineering.domain.routing.CustomerIntentType;
+import com.xbk.agent.framework.engineering.domain.routing.RoutingDecision;
 import com.xbk.agent.framework.engineering.domain.routing.SpecialistType;
 import com.xbk.agent.framework.engineering.framework.agent.FrameworkReceptionistService;
 import com.xbk.agent.framework.engineering.framework.client.SalesRemoteAgentFacade;
 import com.xbk.agent.framework.engineering.framework.client.TechSupportRemoteAgentFacade;
+import com.xbk.agent.framework.engineering.framework.messaging.RoutingAuditEventPublisher;
+import com.xbk.agent.framework.engineering.framework.messaging.SpecialistEscalationPublisher;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
@@ -109,6 +117,56 @@ class FrameworkReceptionistRoutingTest {
     }
 
     /**
+     * 验证成功路由后会把路由决策发布到 MQ 审计增强层。
+     */
+    @Test
+    void shouldPublishRoutingAuditWhenRequestHandledSuccessfully() {
+        TechSupportRemoteAgentFacade techFacade = mock(TechSupportRemoteAgentFacade.class);
+        SalesRemoteAgentFacade salesFacade = mock(SalesRemoteAgentFacade.class);
+        RoutingAuditEventPublisher auditPublisher = mock(RoutingAuditEventPublisher.class);
+        SpecialistEscalationPublisher escalationPublisher = mock(SpecialistEscalationPublisher.class);
+        when(techFacade.call(anyString(), anyString())).thenReturn("技术专家回答");
+
+        String userRequest = "我的服务启动时报 NullPointerException，帮我排查。";
+        FrameworkReceptionistService service = createService(
+                techFacade, salesFacade, auditPublisher, escalationPublisher, "TECH_SUPPORT");
+
+        EngineeringRunResult result = service.handle(userRequest);
+
+        ArgumentCaptor<String> conversationIdCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<RoutingDecision> decisionCaptor = ArgumentCaptor.forClass(RoutingDecision.class);
+        verify(auditPublisher).publishRoutingAudit(conversationIdCaptor.capture(), eq(userRequest), decisionCaptor.capture());
+        assertEquals(result.getConversationId(), conversationIdCaptor.getValue());
+        assertEquals(SpecialistType.TECH_SUPPORT, decisionCaptor.getValue().getSpecialistType());
+        verifyNoInteractions(escalationPublisher);
+    }
+
+    /**
+     * 验证远端专家调用失败时会发布升级任务到 MQ 增强层。
+     */
+    @Test
+    void shouldPublishEscalationWhenRemoteSpecialistCallFails() {
+        TechSupportRemoteAgentFacade techFacade = mock(TechSupportRemoteAgentFacade.class);
+        SalesRemoteAgentFacade salesFacade = mock(SalesRemoteAgentFacade.class);
+        RoutingAuditEventPublisher auditPublisher = mock(RoutingAuditEventPublisher.class);
+        SpecialistEscalationPublisher escalationPublisher = mock(SpecialistEscalationPublisher.class);
+        when(techFacade.call(anyString(), anyString())).thenThrow(new RuntimeException("A2A 调用超时"));
+
+        String userRequest = "我的服务一直报错，帮我排查。";
+        FrameworkReceptionistService service = createService(
+                techFacade, salesFacade, auditPublisher, escalationPublisher, "TECH_SUPPORT");
+
+        assertThrows(RuntimeException.class, () -> service.handle(userRequest));
+
+        verify(auditPublisher).publishRoutingAudit(anyString(), eq(userRequest), any(RoutingDecision.class));
+        verify(escalationPublisher).publishEscalation(
+                anyString(),
+                eq(userRequest),
+                eq("tech_support_agent"),
+                contains("A2A 调用超时"));
+    }
+
+    /**
      * 创建使用脚本化网关和 mock Facade 的接待员服务。
      *
      * @param techFacade mock 技术 Facade
@@ -122,6 +180,27 @@ class FrameworkReceptionistRoutingTest {
         AgentLlmGateway gateway = new ScriptedGateway(intentResponse);
         CustomerIntentClassifier classifier = new CustomerIntentClassifier(gateway);
         return new FrameworkReceptionistService(classifier, techFacade, salesFacade);
+    }
+
+    /**
+     * 创建带 MQ 增强层 mock 的接待员服务。
+     *
+     * @param techFacade mock 技术 Facade
+     * @param salesFacade mock 销售 Facade
+     * @param auditPublisher mock 审计发布者
+     * @param escalationPublisher mock 升级发布者
+     * @param intentResponse 意图分类返回值
+     * @return 接待员服务
+     */
+    private FrameworkReceptionistService createService(TechSupportRemoteAgentFacade techFacade,
+                                                        SalesRemoteAgentFacade salesFacade,
+                                                        RoutingAuditEventPublisher auditPublisher,
+                                                        SpecialistEscalationPublisher escalationPublisher,
+                                                        String intentResponse) {
+        AgentLlmGateway gateway = new ScriptedGateway(intentResponse);
+        CustomerIntentClassifier classifier = new CustomerIntentClassifier(gateway);
+        return new FrameworkReceptionistService(
+                classifier, techFacade, salesFacade, auditPublisher, escalationPublisher);
     }
 
     /**

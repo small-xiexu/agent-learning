@@ -1,0 +1,16 @@
+## 技术专家 Provider 应用配置
+## 激活 profile: a2a-tech-provider
+
+spring:
+  application:
+    name: tech-support-agent
+  cloud:
+    nacos:
+      discovery:
+        service: tech-support-agent     # Nacos 注册服务名，Consumer 通过此名发现本 Provider
+
+server:
+  port: 8081
+
+## LLM 配置（与仓库其他模块保持一致）
+## 如需真实调用模型，补充 openai.api-key 或 spring.ai.openai.api-key

@@ -168,13 +168,15 @@ Graph Flow 模块仍然应站在 `framework-core` 的协议之上，而不是绕
 对应配置：
 
 - `src/test/resources/application-openai-graph-demo.yml`
+- `src/test/resources/application-llm-local.yml.example`
+- `src/test/resources/application-llm-local.yml`
 - `src/test/resources/application-openai-graph-demo-local.yml.example`
 - `src/test/resources/application-openai-graph-demo-local.yml`
 
 运行真实 Demo 前，至少要准备两件事：
 
-1. 在本地配置文件里填入真实 `llm.api-key`
-2. 显式开启 `demo.graph.openai.enabled=true`
+1. 在 `application-llm-local.yml` 里填入真实 `llm.*` 参数
+2. 在 `application-openai-graph-demo-local.yml` 里显式开启 `demo.graph.openai.enabled=true`
 
 默认情况下，真实 Demo 会被安全跳过，避免日常测试误打外网。
 

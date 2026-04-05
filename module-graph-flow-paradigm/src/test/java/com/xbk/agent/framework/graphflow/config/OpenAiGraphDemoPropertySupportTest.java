@@ -58,23 +58,21 @@ class OpenAiGraphDemoPropertySupportTest {
     @Test
     void shouldLoadApiKeyFromDemoConfigFiles() throws Exception {
         String mainConfig = "openai-graph-demo-fixture/application-openai-graph-demo.yml";
-        String localConfig = "openai-graph-demo-fixture/application-openai-graph-demo-local.yml";
 
         assertEquals("fixture-graph-key",
-                OpenAiGraphDemoPropertySupport.loadEnvironment(mainConfig, localConfig).getProperty("llm.api-key"));
-        assertTrue(OpenAiGraphDemoPropertySupport.hasConfiguredApiKey(mainConfig, localConfig));
-        assertTrue(OpenAiGraphDemoPropertySupport.isDemoEnabled(mainConfig, localConfig));
+                OpenAiGraphDemoPropertySupport.loadEnvironment(mainConfig, null).getProperty("llm.api-key"));
+        assertTrue(OpenAiGraphDemoPropertySupport.hasConfiguredApiKey(mainConfig, null));
+        assertTrue(OpenAiGraphDemoPropertySupport.isDemoEnabled(mainConfig, null));
     }
 
     /**
-     * 验证 fixture 的 local 配置与真实 local 配置格式保持一致。
+     * 验证 fixture 的共享 LLM 本地配置与真实模板格式保持一致。
      *
      * @throws Exception 读取配置失败时抛出异常
      */
     @Test
     void shouldKeepFixtureLocalConfigAlignedWithRealLocalConfig() throws Exception {
-        Resource resource = new ClassPathResource(
-                "openai-graph-demo-fixture/application-openai-graph-demo-local.yml");
+        Resource resource = new ClassPathResource("openai-graph-demo-fixture/application-llm-local.yml");
         assertNotNull(resource);
 
         YamlPropertySourceLoader loader = new YamlPropertySourceLoader();
@@ -104,11 +102,12 @@ class OpenAiGraphDemoPropertySupportTest {
             environment.getPropertySources().addLast(propertySources.get(index));
         }
 
+        assertEquals("optional:application-llm-local.yml", environment.getProperty("spring.config.import[0]"));
         assertEquals("optional:application-openai-graph-demo-local.yml",
-                environment.getProperty("spring.config.import"));
+                environment.getProperty("spring.config.import[1]"));
         assertEquals("https://api.openai.com", environment.getProperty("llm.base-url"));
-        assertEquals("your-openai-api-key", environment.getProperty("llm.api-key"));
-        assertEquals("false", environment.getProperty("demo.graph.openai.enabled"));
+        assertFalse(OpenAiGraphDemoPropertySupport.hasConfiguredApiKey(environment));
+        assertFalse(OpenAiGraphDemoPropertySupport.isDemoEnabled(environment));
     }
 
     /**

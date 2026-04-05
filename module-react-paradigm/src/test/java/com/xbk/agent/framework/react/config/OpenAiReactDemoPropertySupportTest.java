@@ -1,10 +1,17 @@
 package com.xbk.agent.framework.react.config;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.env.YamlPropertySourceLoader;
+import org.springframework.core.env.PropertySource;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 import org.springframework.mock.env.MockEnvironment;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -56,13 +63,12 @@ class OpenAiReactDemoPropertySupportTest {
      */
     @Test
     void shouldLoadApiKeyFromDemoConfigFiles() throws Exception {
-        String mainConfig = "openai-demo-fixture/application-openai-react-demo.yml";
-        String localConfig = "openai-demo-fixture/application-openai-react-demo-local.yml";
+        String mainConfig = "openai-react-demo-fixture/application-openai-react-demo.yml";
 
-        assertEquals("fixture-file-key",
-                OpenAiReactDemoPropertySupport.loadEnvironment(mainConfig, localConfig).getProperty("llm.api-key"));
-        assertTrue(OpenAiReactDemoPropertySupport.hasConfiguredApiKey(mainConfig, localConfig));
-        assertTrue(OpenAiReactDemoPropertySupport.isDemoEnabled(mainConfig, localConfig));
+        assertEquals("fixture-react-key",
+                OpenAiReactDemoPropertySupport.loadEnvironment(mainConfig, null).getProperty("llm.api-key"));
+        assertTrue(OpenAiReactDemoPropertySupport.hasConfiguredApiKey(mainConfig, null));
+        assertTrue(OpenAiReactDemoPropertySupport.isDemoEnabled(mainConfig, null));
     }
 
     /**
@@ -88,13 +94,38 @@ class OpenAiReactDemoPropertySupportTest {
     }
 
     /**
+     * 验证主配置保持模板态，只显式导入共享 LLM 本地配置和 Demo 本地开关配置。
+     *
+     * @throws Exception 加载资源失败时抛出异常
+     */
+    @Test
+    void shouldKeepMainConfigAsTemplateAndImportSharedLocalFiles() throws Exception {
+        Resource resource = new ClassPathResource("application-openai-react-demo.yml");
+        assertNotNull(resource);
+
+        YamlPropertySourceLoader loader = new YamlPropertySourceLoader();
+        List<PropertySource<?>> propertySources = loader.load(resource.getFilename(), resource);
+        MockEnvironment environment = new MockEnvironment();
+        for (int index = propertySources.size() - 1; index >= 0; index--) {
+            environment.getPropertySources().addLast(propertySources.get(index));
+        }
+
+        assertEquals("optional:application-llm-local.yml", environment.getProperty("spring.config.import[0]"));
+        assertEquals("optional:application-openai-react-demo-local.yml",
+                environment.getProperty("spring.config.import[1]"));
+        assertEquals("https://api.openai.com", environment.getProperty("llm.base-url"));
+        assertFalse(OpenAiReactDemoPropertySupport.hasConfiguredApiKey(environment));
+        assertFalse(OpenAiReactDemoPropertySupport.isDemoEnabled(environment));
+    }
+
+    /**
      * 验证 Demo 配置加载不应回退到系统属性。
      *
      * @throws Exception 加载资源失败时抛出异常
      */
     @Test
     void shouldIgnoreSystemPropertyFallbacks() throws Exception {
-        String mainConfig = "openai-demo-fixture/application-openai-react-demo.yml";
+        String mainConfig = "openai-react-demo-fixture/missing.yml";
         String originalApiKey = System.getProperty("llm.api-key");
         String originalEnabled = System.getProperty("demo.react.openai.enabled");
         System.setProperty("llm.api-key", "system-property-key");

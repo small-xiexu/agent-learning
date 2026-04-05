@@ -58,23 +58,21 @@ class OpenAiConversationDemoPropertySupportTest {
     @Test
     void shouldLoadApiKeyFromDemoConfigFiles() throws Exception {
         String mainConfig = "openai-conversation-demo-fixture/application-openai-conversation-demo.yml";
-        String localConfig = "openai-conversation-demo-fixture/application-openai-conversation-demo-local.yml";
 
         assertEquals("fixture-conversation-key",
-                OpenAiConversationDemoPropertySupport.loadEnvironment(mainConfig, localConfig).getProperty("llm.api-key"));
-        assertTrue(OpenAiConversationDemoPropertySupport.hasConfiguredApiKey(mainConfig, localConfig));
-        assertTrue(OpenAiConversationDemoPropertySupport.isDemoEnabled(mainConfig, localConfig));
+                OpenAiConversationDemoPropertySupport.loadEnvironment(mainConfig, null).getProperty("llm.api-key"));
+        assertTrue(OpenAiConversationDemoPropertySupport.hasConfiguredApiKey(mainConfig, null));
+        assertTrue(OpenAiConversationDemoPropertySupport.isDemoEnabled(mainConfig, null));
     }
 
     /**
-     * 验证 fixture 的 local 配置与真实 local 配置格式保持一致。
+     * 验证 fixture 的共享 LLM 本地配置与真实模板格式保持一致。
      *
      * @throws Exception 读取配置失败时抛出异常
      */
     @Test
     void shouldKeepFixtureLocalConfigAlignedWithRealLocalConfig() throws Exception {
-        Resource resource = new ClassPathResource(
-                "openai-conversation-demo-fixture/application-openai-conversation-demo-local.yml");
+        Resource resource = new ClassPathResource("openai-conversation-demo-fixture/application-llm-local.yml");
         assertNotNull(resource);
 
         YamlPropertySourceLoader loader = new YamlPropertySourceLoader();
@@ -104,11 +102,12 @@ class OpenAiConversationDemoPropertySupportTest {
             environment.getPropertySources().addLast(propertySources.get(index));
         }
 
+        assertEquals("optional:application-llm-local.yml", environment.getProperty("spring.config.import[0]"));
         assertEquals("optional:application-openai-conversation-demo-local.yml",
-                environment.getProperty("spring.config.import"));
+                environment.getProperty("spring.config.import[1]"));
         assertEquals("https://api.openai.com", environment.getProperty("llm.base-url"));
-        assertEquals("your-openai-api-key", environment.getProperty("llm.api-key"));
-        assertEquals("false", environment.getProperty("demo.conversation.openai.enabled"));
+        assertFalse(OpenAiConversationDemoPropertySupport.hasConfiguredApiKey(environment));
+        assertFalse(OpenAiConversationDemoPropertySupport.isDemoEnabled(environment));
     }
 
     /**

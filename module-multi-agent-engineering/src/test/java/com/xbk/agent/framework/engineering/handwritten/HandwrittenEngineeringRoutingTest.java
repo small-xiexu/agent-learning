@@ -22,6 +22,11 @@ import com.xbk.agent.framework.engineering.handwritten.runtime.ConversationConte
 import com.xbk.agent.framework.engineering.handwritten.runtime.PendingResponseRegistry;
 import org.junit.jupiter.api.Test;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -75,14 +80,36 @@ class HandwrittenEngineeringRoutingTest {
     }
 
     /**
+     * 验证协调器等待结果时使用无超时阻塞等待。
+     */
+    @Test
+    void shouldWaitForResultWithoutTimedGet() {
+        HandwrittenEngineeringCoordinator coordinator = createCoordinator(new UntimedOnlyPendingResponseRegistry());
+
+        EngineeringRunResult result = coordinator.run("我的服务启动时报 NullPointerException，帮我排查原因。");
+
+        assertEquals(CustomerIntentType.TECH_SUPPORT, result.getIntentType());
+        assertEquals(SpecialistType.TECH_SUPPORT, result.getSpecialistType());
+    }
+
+    /**
      * 创建手写版协调器。
      *
      * @return 协调器
      */
     private HandwrittenEngineeringCoordinator createCoordinator() {
+        return createCoordinator(new PendingResponseRegistry());
+    }
+
+    /**
+     * 创建手写版协调器。
+     *
+     * @param pendingResponseRegistry 待回包注册表
+     * @return 协调器
+     */
+    private HandwrittenEngineeringCoordinator createCoordinator(PendingResponseRegistry pendingResponseRegistry) {
         ScriptedEngineeringGateway gateway = new ScriptedEngineeringGateway();
         InMemoryMessageHub messageHub = new InMemoryMessageHub();
-        PendingResponseRegistry pendingResponseRegistry = new PendingResponseRegistry();
         ConversationContextStore contextStore = new ConversationContextStore();
         CustomerIntentClassifier classifier = new CustomerIntentClassifier(gateway);
         HandwrittenReceptionistAgent receptionistAgent = new HandwrittenReceptionistAgent(
@@ -96,6 +123,92 @@ class HandwrittenEngineeringRoutingTest {
                 salesAgent,
                 pendingResponseRegistry,
                 contextStore);
+    }
+
+    /**
+     * 只允许无超时等待的注册表。
+     *
+     * 职责：如果协调器继续调用 get(timeout, unit)，测试会立刻失败，
+     * 从而钉住"学习场景下应使用无限等待"这一行为。
+     *
+     * @author xiexu
+     */
+    private static final class UntimedOnlyPendingResponseRegistry extends PendingResponseRegistry {
+
+        private final ConcurrentHashMap<String, CompletableFuture<EngineeringRunResult>> pendingResponses =
+                new ConcurrentHashMap<String, CompletableFuture<EngineeringRunResult>>();
+
+        /**
+         * 注册只允许无超时等待的 Future。
+         *
+         * @param correlationId 关联标识
+         * @return future
+         */
+        @Override
+        public CompletableFuture<EngineeringRunResult> register(String correlationId) {
+            CompletableFuture<EngineeringRunResult> future = new UntimedOnlyFuture();
+            pendingResponses.put(correlationId, future);
+            return future;
+        }
+
+        /**
+         * 完成回包。
+         *
+         * @param correlationId 关联标识
+         * @param result 运行结果
+         */
+        @Override
+        public void complete(String correlationId, EngineeringRunResult result) {
+            CompletableFuture<EngineeringRunResult> future = pendingResponses.get(correlationId);
+            if (future != null) {
+                future.complete(result);
+            }
+        }
+
+        /**
+         * 获取 future。
+         *
+         * @param correlationId 关联标识
+         * @return future
+         */
+        @Override
+        public CompletableFuture<EngineeringRunResult> get(String correlationId) {
+            return pendingResponses.get(correlationId);
+        }
+
+        /**
+         * 删除 future。
+         *
+         * @param correlationId 关联标识
+         */
+        @Override
+        public void remove(String correlationId) {
+            pendingResponses.remove(correlationId);
+        }
+    }
+
+    /**
+     * 只允许调用无超时 get() 的 Future。
+     *
+     * @author xiexu
+     */
+    private static final class UntimedOnlyFuture extends CompletableFuture<EngineeringRunResult> {
+
+        /**
+         * 禁止超时版本的等待。
+         *
+         * @param timeout 超时时间
+         * @param unit 时间单位
+         * @return 永不返回
+         * @throws InterruptedException 忽略
+         * @throws ExecutionException 忽略
+         * @throws TimeoutException 忽略
+         */
+        @Override
+        public EngineeringRunResult get(long timeout, TimeUnit unit)
+                throws InterruptedException, ExecutionException, TimeoutException {
+            throw new AssertionError("Coordinator should use future.get() without timeout");
+        }
     }
 
     /**

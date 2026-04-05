@@ -7,7 +7,7 @@ import java.util.List;
 
 /**
  * 专家 Agent 远端定位器。
- *
+ * <p>
  * 职责：通过 Nacos 服务发现，把逻辑 Agent 名（如 "tech-support-agent"）
  * 转换成可访问的 HTTP URL（如 "http://192.168.1.100:8081"）。
  *
@@ -53,10 +53,10 @@ public class SpecialistRemoteAgentLocator {
         List<ServiceInstance> instances = discoveryClient.getInstances(agentServiceName);
         if (instances == null || instances.isEmpty()) {
             throw new IllegalStateException(
-                    "No available instance found for agent service: " + agentServiceName
-                            + ". Make sure the Provider application is running and registered to Nacos.");
+                    "未找到可用的 Agent 服务实例: " + agentServiceName
+                            + "，请确认 Provider 应用已启动并注册到 Nacos。");
         }
-        ServiceInstance instance = instances.get(0);
+        ServiceInstance instance = instances.getFirst();
         return "http://" + instance.getHost() + ":" + instance.getPort();
     }
 

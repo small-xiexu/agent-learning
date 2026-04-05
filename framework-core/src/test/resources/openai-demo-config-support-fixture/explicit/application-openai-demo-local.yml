@@ -1,7 +1,7 @@
 llm:
-  api-key: fixture-file-key
+  api-key: explicit-local-key
 
 demo:
-  engineering:
+  sample:
     openai:
       enabled: true

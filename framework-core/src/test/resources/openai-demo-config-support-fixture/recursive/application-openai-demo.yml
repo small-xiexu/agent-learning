@@ -1,15 +1,14 @@
 spring:
   config:
-    import: optional:application-openai-engineering-demo-local.yml
+    import: optional:nested/import-chain.yml
 
 llm:
   provider: openai-compatible
   base-url: https://api.openai.com
   api-key:
   model: gpt-4o
-  chat-completions-path: /v1/chat/completions
 
 demo:
-  engineering:
+  sample:
     openai:
       enabled: false

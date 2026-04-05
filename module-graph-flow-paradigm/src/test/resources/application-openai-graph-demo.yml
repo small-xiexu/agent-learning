@@ -1,15 +1,17 @@
 spring:
   config:
-    import: optional:application-openai-graph-demo-local.yml
+    import:
+      - optional:application-llm-local.yml
+      - optional:application-openai-graph-demo-local.yml
 
 llm:
   provider: openai-compatible
-  base-url: https://apis.itedus.cn
-  api-key: sk-JjZEhlPxlpRUHOqi75358aE123Fa47CcA2Ec467d15CcC2Cd
+  base-url: https://api.openai.com
+  api-key:
   model: gpt-4o
   chat-completions-path: /v1/chat/completions
 
 demo:
   graph:
     openai:
-      enabled: true
+      enabled: false

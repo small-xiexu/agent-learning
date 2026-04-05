@@ -1,0 +1,6 @@
+spring:
+  config:
+    import:
+      - optional:../application-llm-local.yml
+      - optional:application-openai-demo-local.yml
+      - optional:missing.yml

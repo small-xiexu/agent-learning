@@ -8,7 +8,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * 职责：收敛框架版 MQ 增强层（审计事件、升级任务、异步回调）的配置项。
  * MQ 增强层与 A2A 主通信链路是解耦的：A2A 不可用时 MQ 增强层仍可独立控制开关。
  *
- * <p>配置示例（application-engineering-mq-local.yml）：
+ * <p>配置示例（application-engineering-mq-rocketmq.yml）：
  * <pre>
  *   engineering:
  *     mq:

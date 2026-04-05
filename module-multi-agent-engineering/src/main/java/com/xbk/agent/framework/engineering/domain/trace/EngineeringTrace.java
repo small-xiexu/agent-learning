@@ -11,6 +11,12 @@ import java.util.List;
  */
 public final class EngineeringTrace {
 
+    /**
+     * 本次客服链路的全部投递记录（不可变快照）。
+     *
+     * 每条记录对应一个 publish / deliver / consume 事件，三条记录合为一条消息的完整投递轨迹。
+     * 整个列表按时间顺序排列，可直接用于教学演示中的消息流转可视化。
+     */
     private final List<DeliveryRecord> deliveryRecords;
 
     /**

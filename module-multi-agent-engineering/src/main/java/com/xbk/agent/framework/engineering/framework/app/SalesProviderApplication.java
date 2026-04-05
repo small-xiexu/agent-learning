@@ -12,7 +12,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
  * <p>运行方式：
  * <pre>
  *   mvn spring-boot:run -Dspring-boot.run.profiles=a2a-sales-provider,a2a-nacos-local
- *   java -jar xxx.jar --spring.profiles.active=a2a-sales-provider,a2a-nacos-local
+ *   java -jar xxx.jar --spring.profiles.active=a2a-sales-provider,a2a-nacos-local,llm-local
  * </pre>
  *
  * <p>三进程本地集成架构说明：
@@ -32,7 +32,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 public class SalesProviderApplication {
 
     public static void main(String[] args) {
-        System.setProperty("spring.profiles.active", "a2a-sales-provider,a2a-nacos-local");
+        System.setProperty("spring.profiles.active", "a2a-sales-provider,a2a-nacos-local,llm-local");
         SpringApplication.run(SalesProviderApplication.class, args);
     }
 }

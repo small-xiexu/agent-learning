@@ -11,7 +11,10 @@ import com.xbk.agent.framework.engineering.domain.routing.SpecialistType;
  */
 public final class SpecialistResponsePayload {
 
+    /** 回包的专家类型，Receptionist 用它决定最终回复的措辞风格，也写入 EngineeringRunResult。 */
     private final SpecialistType specialistType;
+
+    /** 专家生成的原始答复文本，未经 Receptionist 润色，对应 EngineeringRunResult.specialistResponse。 */
     private final String resolvedText;
 
     /**

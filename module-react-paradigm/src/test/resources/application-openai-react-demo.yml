@@ -1,6 +1,8 @@
 spring:
   config:
-    import: optional:application-openai-react-demo-local.yml
+    import:
+      - optional:application-llm-local.yml
+      - optional:application-openai-react-demo-local.yml
 
 llm:
   provider: openai-compatible

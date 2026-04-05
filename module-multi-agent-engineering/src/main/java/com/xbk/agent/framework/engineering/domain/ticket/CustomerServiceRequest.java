@@ -9,6 +9,7 @@ package com.xbk.agent.framework.engineering.domain.ticket;
  */
 public final class CustomerServiceRequest {
 
+    /** 用户原始诉求文本。是整条链的输入来源，由 Coordinator 封装后投递给 Receptionist。 */
     private final String requestText;
 
     /**

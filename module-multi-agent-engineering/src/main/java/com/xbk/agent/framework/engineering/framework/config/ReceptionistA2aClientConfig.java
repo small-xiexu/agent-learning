@@ -6,9 +6,13 @@ import com.xbk.agent.framework.engineering.framework.agent.FrameworkReceptionist
 import com.xbk.agent.framework.engineering.framework.client.SalesRemoteAgentFacade;
 import com.xbk.agent.framework.engineering.framework.client.SpecialistRemoteAgentLocator;
 import com.xbk.agent.framework.engineering.framework.client.TechSupportRemoteAgentFacade;
+import com.xbk.agent.framework.engineering.framework.messaging.RoutingAuditEventPublisher;
+import com.xbk.agent.framework.engineering.framework.messaging.SpecialistEscalationPublisher;
 import com.xbk.agent.framework.engineering.framework.support.A2aInvocationTraceSupport;
+import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -34,7 +38,7 @@ import org.springframework.context.annotation.Profile;
  */
 @Profile("a2a-receptionist-consumer")
 @Configuration
-@EnableConfigurationProperties(A2aNacosCommonConfig.class)
+@EnableConfigurationProperties({A2aNacosCommonConfig.class, EngineeringMqEnhancementConfig.class})
 public class ReceptionistA2aClientConfig {
 
     /**
@@ -108,18 +112,58 @@ public class ReceptionistA2aClientConfig {
     }
 
     /**
+     * 路由审计事件发布者。
+     *
+     * <p>RocketMQTemplate 不存在时仍创建 Bean，内部自动降级为 no-op，
+     * 这样本地默认环境无需 RocketMQ 也能正常启动。
+     *
+     * @param rocketMQTemplateProvider RocketMQ 模板提供者
+     * @param mqConfig MQ 增强层配置
+     * @return 路由审计发布者
+     */
+    @Bean
+    public RoutingAuditEventPublisher routingAuditEventPublisher(
+            ObjectProvider<RocketMQTemplate> rocketMQTemplateProvider,
+            EngineeringMqEnhancementConfig mqConfig) {
+        return new RoutingAuditEventPublisher(rocketMQTemplateProvider.getIfAvailable(), mqConfig);
+    }
+
+    /**
+     * 专家升级任务发布者。
+     *
+     * @param rocketMQTemplateProvider RocketMQ 模板提供者
+     * @param mqConfig MQ 增强层配置
+     * @return 升级任务发布者
+     */
+    @Bean
+    public SpecialistEscalationPublisher specialistEscalationPublisher(
+            ObjectProvider<RocketMQTemplate> rocketMQTemplateProvider,
+            EngineeringMqEnhancementConfig mqConfig) {
+        return new SpecialistEscalationPublisher(rocketMQTemplateProvider.getIfAvailable(), mqConfig);
+    }
+
+    /**
      * 框架版接待员服务（Consumer 侧核心）。
      *
      * @param intentClassifier 意图分类器
      * @param techFacade 技术专家 Facade
      * @param salesFacade 销售顾问 Facade
+     * @param auditPublisher 路由审计发布者
+     * @param escalationPublisher 专家升级发布者
      * @return 接待员服务
      */
     @Bean
     public FrameworkReceptionistService frameworkReceptionistService(
             CustomerIntentClassifier intentClassifier,
             TechSupportRemoteAgentFacade techFacade,
-            SalesRemoteAgentFacade salesFacade) {
-        return new FrameworkReceptionistService(intentClassifier, techFacade, salesFacade);
+            SalesRemoteAgentFacade salesFacade,
+            RoutingAuditEventPublisher auditPublisher,
+            SpecialistEscalationPublisher escalationPublisher) {
+        return new FrameworkReceptionistService(
+                intentClassifier,
+                techFacade,
+                salesFacade,
+                auditPublisher,
+                escalationPublisher);
     }
 }

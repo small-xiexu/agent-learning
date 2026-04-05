@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -83,30 +84,12 @@ public class TechSupportA2aServerConfig {
     }
 
     /**
-     * 技术专家 A2A Server 控制器。
-     *
-     * <p>暴露 AgentCard 端点和 A2A JSON-RPC 端点。
-     * 这是框架版"Provider 侧"的完整实现：接收 A2A 请求 → 调用专家 Agent → 返回 Task 结果。
-     *
-     * @param agentCardProvider AgentCard 提供者
-     * @param agentFactory 技术专家工厂
-     * @param objectMapper Jackson 序列化器
-     * @return 控制器 Bean
-     */
-    @Bean
-    public TechSupportA2aController techSupportA2aController(
-            AgentCardProvider agentCardProvider,
-            TechSupportAgentFactory agentFactory,
-            ObjectMapper objectMapper) {
-        return new TechSupportA2aController(agentCardProvider, agentFactory, objectMapper);
-    }
-
-    /**
      * 技术专家 A2A 控制器内部类。
      *
-     * <p>这不是 @RestController 注解，而是通过 @Bean 注册的控制器，
-     * 因为 Spring MVC 支持把任何 Bean 注册为处理器，只要它有 @RequestMapping 注解。
+     * <p>通过组件扫描注册，但额外用 {@code @Profile} 约束只在技术专家 Provider
+     * 场景下生效，避免在其他应用里误装配导致依赖缺失。
      */
+    @Profile("a2a-tech-provider")
     @RestController
     public static class TechSupportA2aController {
 

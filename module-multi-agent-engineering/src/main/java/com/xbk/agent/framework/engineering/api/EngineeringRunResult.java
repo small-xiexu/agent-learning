@@ -16,14 +16,61 @@ import java.util.List;
  */
 public final class EngineeringRunResult {
 
+    /** 会话唯一标识。用于在多轮对话或日志中关联同一次用户会话的所有请求与响应。 */
     private final String conversationId;
+
+    /** 用户原始请求文本。路由器、意图分类器的输入来源，最终也会写入 trace 供审计回溯。 */
     private final String requestText;
+
+    /**
+     * 意图分类结果。
+     *
+     * 由 IntentClassifier（意图分类节点）识别并写入，SpecialistRouter 读取后据此决定转交哪个专家 Agent。
+     * 是路由链的第一个控制字段：分类错则后续所有路由都会走偏。
+     */
     private final CustomerIntentType intentType;
+
+    /**
+     * 命中的专家类型。
+     *
+     * 由 SpecialistRouter 根据 intentType 映射得出，标识本次请求最终由哪个专家 Agent 处理。
+     * 手写版与框架版均写入此字段，供调用方判断"谁回答了这个问题"。
+     */
     private final SpecialistType specialistType;
+
+    /**
+     * 路由决策详情。
+     *
+     * 包含路由器的完整判断过程（置信度、候选路径等），比 specialistType 更细粒度。
+     * 主要用于调试和 trace 展示；业务逻辑一般只需读 specialistType。
+     */
     private final RoutingDecision routingDecision;
+
+    /** 专家 Agent 的原始回复。未经 Synthesizer 加工，保留原始语义，用于 trace 对比和调试。 */
     private final String specialistResponse;
+
+    /**
+     * 最终对外输出的回复文本。
+     *
+     * 由 ResponseSynthesizer 在 specialistResponse 基础上润色生成，是整条流水线的最终产物，
+     * 也是调用方（演示入口、API 层）实际展示给用户的内容。
+     */
     private final String finalResponse;
+
+    /**
+     * 路由轨迹列表。
+     *
+     * 按顺序记录本次请求经过的每个节点名称（如 IntentClassifier → SpecialistRouter → …），
+     * 用于可视化流水线执行路径，以及排查路由跳转是否符合预期。
+     */
     private final List<String> routeTrail;
+
+    /**
+     * 工程执行轨迹。
+     *
+     * 聚合了手写版与框架版对照所需的全量调试信息（节点耗时、中间状态快照等）。
+     * 仅用于教学演示和对照分析，生产环境可按需裁剪。
+     */
     private final EngineeringTrace trace;
 
     /**

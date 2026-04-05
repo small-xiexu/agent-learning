@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -66,23 +67,12 @@ public class SalesA2aServerConfig {
     }
 
     /**
-     * 销售顾问 A2A Server 控制器。
-     *
-     * @param agentCardProvider AgentCard 提供者
-     * @param agentFactory 销售顾问工厂
-     * @param objectMapper Jackson 序列化器
-     * @return 控制器 Bean
-     */
-    @Bean
-    public SalesA2aController salesA2aController(AgentCardProvider agentCardProvider,
-                                                  SalesAgentFactory agentFactory,
-                                                  ObjectMapper objectMapper) {
-        return new SalesA2aController(agentCardProvider, agentFactory, objectMapper);
-    }
-
-    /**
      * 销售顾问 A2A 控制器。
+     *
+     * <p>通过组件扫描注册，但额外用 {@code @Profile} 约束只在销售顾问 Provider
+     * 场景下生效，避免在其他应用里误装配导致依赖缺失。
      */
+    @Profile("a2a-sales-provider")
     @RestController
     public static class SalesA2aController {
 

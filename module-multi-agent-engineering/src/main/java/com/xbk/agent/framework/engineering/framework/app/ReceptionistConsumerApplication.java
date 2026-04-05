@@ -12,7 +12,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
  *
  * <p>运行方式：
  * <pre>
- *   java -jar xxx.jar --spring.profiles.active=a2a-receptionist-consumer,a2a-nacos-local
+ *   java -jar xxx.jar --spring.profiles.active=a2a-receptionist-consumer,a2a-nacos-local,llm-local
  * </pre>
  *
  * <p>完整集成场景（三进程本地模式）：
@@ -24,7 +24,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
  *   java -jar xxx.jar --spring.profiles.active=a2a-sales-provider,a2a-nacos-local
  *
  *   # 终端 3：启动接待员 Consumer（端口 8080）
- *   java -jar xxx.jar --spring.profiles.active=a2a-receptionist-consumer,a2a-nacos-local
+ *   java -jar xxx.jar --spring.profiles.active=a2a-receptionist-consumer,a2a-nacos-local,llm-local
  *
  *   # 发送测试请求（通过 HTTP 或单元测试）
  *   POST http://localhost:8080/engineering/handle
@@ -38,7 +38,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 public class ReceptionistConsumerApplication {
 
     public static void main(String[] args) {
-        System.setProperty("spring.profiles.active", "a2a-receptionist-consumer,a2a-nacos-local");
+        System.setProperty("spring.profiles.active", "a2a-receptionist-consumer,a2a-nacos-local,llm-local");
         SpringApplication.run(ReceptionistConsumerApplication.class, args);
     }
 }

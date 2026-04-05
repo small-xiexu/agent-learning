@@ -19,6 +19,9 @@ public class AsyncMessageDispatcher implements AutoCloseable {
      * 创建默认分发器。
      */
     public AsyncMessageDispatcher() {
+        // 线程数下限为 2：至少能并发处理 Receptionist 和一个专家 Agent，
+        // 防止单线程时 Receptionist 等专家回包而专家任务又排在自己后面造成死锁。
+        // 上限跟随 CPU 核数，避免线程过多导致上下文切换开销反超收益。
         this.executorService = Executors.newFixedThreadPool(Math.max(2, Runtime.getRuntime().availableProcessors()));
     }
 
@@ -36,11 +39,14 @@ public class AsyncMessageDispatcher implements AutoCloseable {
      */
     @Override
     public void close() {
+        // shutdown() 不再接受新任务，但允许队列中的现有任务跑完。
         executorService.shutdown();
         try {
+            // 等待最多 5 秒让线程池优雅退出；教学演示场景足够，生产需按最大任务耗时调整。
             executorService.awaitTermination(5, TimeUnit.SECONDS);
         }
         catch (InterruptedException ex) {
+            // 恢复中断标志，让调用方能感知并决定是否强制终止。
             Thread.currentThread().interrupt();
         }
     }

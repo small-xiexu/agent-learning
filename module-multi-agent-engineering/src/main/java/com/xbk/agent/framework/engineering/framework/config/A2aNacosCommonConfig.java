@@ -12,9 +12,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * <pre>
  *   engineering:
  *     a2a:
- *       nacos:
- *         server-addr: 127.0.0.1:8848
- *         namespace: engineering-a2a
  *       timeout: 30000
  *       agent:
  *         tech:
@@ -24,6 +21,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *         receptionist:
  *           name: receptionist-agent
  * </pre>
+ *
+ * <p>Nacos 连接参数（server-addr、namespace）已在 Java 代码中提供默认值，
+ * 与 spring.cloud.nacos.discovery 保持一致，无需在 YAML 中重复配置。
  *
  * @author xiexu
  */
